@@ -123,6 +123,7 @@ class RegionFile(collections.abc.MutableMapping):
             self.write(buff)
 
     def write(self, buff):
+        # TODO: add padding! (last chunk)
         raise NotImplementedError  # yet
 
     def __str__(self):
@@ -161,6 +162,11 @@ class RegionChunk(Chunk):
     timestamp   --
     compression --
     """
+    compress = {
+        COMPRESSION_NONE: lambda _:_,
+        COMPRESSION_GZIP: gzip.compress,
+        COMPRESSION_ZLIB: zlib.compress,
+    }
     decompress = {
         COMPRESSION_NONE: lambda _:_,
         COMPRESSION_GZIP: gzip.decompress,
@@ -204,6 +210,17 @@ class RegionChunk(Chunk):
         self.compression = compression
 
         return self
+
+    def write(self, buff, *args, **kwargs) -> int:
+        with io.BytesIO() as b:
+            super().write(b, *args, **kwargs)
+            data = self.compress[self.compression](b.getbuffer())
+        length = len(data)
+        header = struct.Struct(CHUNK_HEADER_FMT)
+        size  = buff.write(header.pack(length + CHUNK_COMPRESSION_BYTES, self.compression))
+        size += buff.write(data)
+        assert size == header.size + length
+        return size
 
     def __str__(self):
         """Just like NTBExplorer!"""
