@@ -52,11 +52,10 @@ class RegionFile(collections.abc.MutableMapping):
 
     Attributes:
         filename -- The name of the file
-        chunks
     """
-    def __init__(self, chunks=None, filename=None):
-        self.chunks = chunks or {}  # TODO: remove when self becomes a true mapping
-        self.filename = filename or None
+    def __init__(self, **chunks):
+        self._chunks = chunks
+        self.filename = None
 
     @classmethod
     def from_buffer(cls, buff):
@@ -102,7 +101,7 @@ class RegionFile(collections.abc.MutableMapping):
                 f'invalid compression type for chunk {pos}, must be one of ' \
                 f'{COMPRESSION_TYPES}: {compression}'
 
-            self.chunks[pos] = RegionChunk.parse(
+            self[pos] = RegionChunk.parse(
                 buff,
                 length - CHUNK_COMPRESSION_BYTES,
                 region=self,
@@ -126,23 +125,26 @@ class RegionFile(collections.abc.MutableMapping):
     def write(self, buff):
         raise NotImplementedError  # yet
 
-    # TODO:
-    __delitem__ = __getitem__ = __iter__ = __len__ = __setitem__ = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):  # @UnusedVariable
-        self.save()
-
     def __str__(self):
-        return str(self.chunks)
+        return str(self._chunks)
 
     def __repr__(self):
         basename = ""
         if self.filename:
             basename = f'{os.path.basename(self.filename)}: '
-        return f'<{self.__class__.__name__}({basename}{len(self.chunks)} chunks)>'
+        return f'<{self.__class__.__name__}({basename}{len(self)} chunks)>'
+
+    # ABC boilerplate
+    def __getitem__(self, key): return self._chunks[key]
+    def __iter__(self): return iter(self._chunks)  # for key in self._ckunks: yield key
+    def __len__(self): return len(self._chunks)
+    def __setitem__(self, key, value): self._chunks[key] = value
+    def __delitem__(self, key): del self._chunks[key]
+    def __contains__(self, key): return key in self._chunks  # optional
+
+    # Context Manager boilerplate
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc_val, exc_tb): self.save()  # @UnusedVariable
 
 
 # TODO: make it an nbtlib.Schema
