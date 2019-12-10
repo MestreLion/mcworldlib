@@ -24,7 +24,7 @@ import zlib
 
 import numpy
 
-from nbtlib import Compound
+from nbtlib import Compound, Path
 
 
 # https://minecraft.gamepedia.com/Region_file_format
@@ -167,6 +167,18 @@ class RegionChunk(Chunk):
         COMPRESSION_ZLIB: zlib.decompress,
     }
 
+    def __init__(self, **tags):
+        self.region = None
+        self.pos = ()
+        self.timestamp = 0
+        self.compression = COMPRESSION_NONE
+        super().__init__(**tags)
+
+    @property
+    def world_pos(self):
+        return (int(self.get(Path("''.Level.xPos"))),
+                int(self.get(Path("''.Level.zPos"))))
+
     @classmethod
     def parse(cls,
         data,  # bytes or file-like buffer
@@ -174,7 +186,7 @@ class RegionChunk(Chunk):
         *args,
         region : RegionFile = None,
         pos : tuple = (),  # (x, z) relative to region
-        timestamp : int = None,  # could be time.gmtime(timestamp)
+        timestamp : int = 0,  # could be time.gmtime(timestamp)
         compression : int = COMPRESSION_ZLIB,
         **kwargs
     ):
@@ -188,10 +200,19 @@ class RegionChunk(Chunk):
         self = super().parse(io.BytesIO(data), *args, **kwargs)
         self.region = region
         self.pos = pos
-        self.timestamp = timestamp
+        self.timestamp = timestamp or int(time.time())
         self.compression = compression
 
         return self
+
+    def __str__(self):
+        """Just like NTBExplorer!"""
+        return (f"<Chunk {list(self.pos)}"
+                f" in world at {self.world_pos}"
+                f" saved on {isodate(self.timestamp)}>")
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}({self.pos}, {self.world_pos}, {self.timestamp})>'
 
 
 def isodate(secs:int) -> str:
