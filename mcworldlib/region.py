@@ -212,6 +212,7 @@ class RegionFile(collections.abc.MutableMapping):
 
 # TODO: make it an nbtlib.Schema
 class Chunk(Compound):
+    __slots__ = ()
     pass
 
 
@@ -226,6 +227,14 @@ class RegionChunk(Chunk):
     compression --
     dirty
     """
+    __slots__ = (
+        'region',
+        'pos',
+        'offset',
+        'timestamp',
+        'compression',
+        'dirty',
+    )
     compress = {
         COMPRESSION_NONE: lambda _:_,
         COMPRESSION_GZIP: gzip.compress,
