@@ -172,13 +172,6 @@ class RegionFile(collections.abc.MutableMapping):
                 (num_sectors(length)  & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)))
 
     @staticmethod
-    def _chunk_positions():
-        """Convenience iterator on chunk positions"""
-        return ((x, z)
-                for x in range(CHUNK_GRID[0])
-                for z in range(CHUNK_GRID[1]))
-
-    @staticmethod
     def _index_from_position(pos):
         """Helper to get the location array index from a (x, z) chunk position"""
         return pos[0] + CHUNK_GRID[0] * pos[1]
@@ -213,7 +206,6 @@ class RegionFile(collections.abc.MutableMapping):
 # TODO: make it an nbtlib.Schema
 class Chunk(Compound):
     __slots__ = ()
-    pass
 
 
 class RegionChunk(Chunk):
