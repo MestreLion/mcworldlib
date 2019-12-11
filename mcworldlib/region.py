@@ -132,6 +132,9 @@ class RegionFile(collections.abc.MutableMapping):
             self.write(buff, *args, **kwargs)
 
     def write(self, buff, *args, **kwargs):
+        if not self:  # no chunks
+            return 0
+
         #TODO: be smart and do not overwrite the whole file
         #      Use chunk.dirty and a good (re-)allocation algorithm
         count = CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
@@ -153,7 +156,7 @@ class RegionFile(collections.abc.MutableMapping):
 
             offset += num_sectors(length) * SECTOR_BYTES
 
-        # Pad the last chunk.
+        # Pad the last chunk
         pad = num_sectors(length) * SECTOR_BYTES - length
         if pad:
             buff.seek(offset - pad)
