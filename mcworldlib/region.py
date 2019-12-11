@@ -84,24 +84,27 @@ class RegionFile(collections.abc.MutableMapping):
             if location == 0:
                 continue
 
-            pos = tuple(reversed(divmod(index, CHUNK_GRID[0])))  # (x, z)
-            offset = location >> (8 * CHUNK_SECTOR_COUNT_BYTES)
-            sector_count = location & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)
-            buff.seek(offset * SECTOR_BYTES)
+            pos = self._position_from_index(index)  # (x, z)
+            offset, sector_count = self._unpack_location(location)
+
+            buff.seek(offset)
             length, compression = header.unpack(buff.read(header.size))
+            length -= CHUNK_COMPRESSION_BYTES  # already read
+            sectors = num_sectors(length + header.size)
 
             # ~2001-09-09 GMT
             assert timestamp  > 1000000000, \
                 f'invalid timestamp for chunk {pos}: {timestamp} ({isodate(timestamp)})'
-            assert 0 < length <= CHUNK_COMPRESSION_BYTES + (sector_count * SECTOR_BYTES), \
-                f'invalid timestamp for chunk {pos}: {length}'
+            assert sector_count == sectors, \
+                f'length mismatch in chunk {pos}: length={length}, but sectors={sector_count}' \
+                f' (should be {sectors} for {SECTOR_BYTES}-byte sectors)'
             assert compression in COMPRESSION_TYPES, \
-                f'invalid compression type for chunk {pos}, must be one of ' \
-                f'{COMPRESSION_TYPES}: {compression}'
+                f'invalid compression type for chunk {pos}, must be one of' \
+                f' {COMPRESSION_TYPES}: {compression}'
 
             self[pos] = RegionChunk.parse(
                 buff,
-                length - CHUNK_COMPRESSION_BYTES,
+                length,
                 region=self,
                 pos=pos,
                 timestamp=timestamp,
@@ -109,7 +112,7 @@ class RegionFile(collections.abc.MutableMapping):
             )
         return self
 
-    def save(self, filename=None):
+    def save(self, filename=None, *args, **kwargs):
         """Write the file at the specified location."""
         if filename is None:
             filename = self.filename
@@ -118,11 +121,30 @@ class RegionFile(collections.abc.MutableMapping):
             raise ValueError('No filename specified')
 
         with open(filename, 'wb') as buff:
-            self.write(buff)
+            self.write(buff, *args, **kwargs)
 
     def write(self, buff):
         # TODO: add padding! (last chunk)
         raise NotImplementedError  # yet
+
+    @staticmethod
+    def _unpack_location(location):
+        """Helper to extract chunk offset (in bytes) and sector_count from location."""
+        # hackish bitwise operations needed as neither struct nor numpy handle 3-byte integers
+        return ((location >> (8 *    CHUNK_SECTOR_COUNT_BYTES)) * SECTOR_BYTES,
+                (location  & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)))
+
+    @staticmethod
+    def _chunk_positions():
+        """Convenience iterator on chunk positions"""
+        return ((x, z)
+                for x in range(CHUNK_GRID[0])
+                for z in range(CHUNK_GRID[1]))
+
+    @staticmethod
+    def _position_from_index(index):
+        """Helper to get the (x, z) chunk position from a location array index"""
+        return tuple(reversed(divmod(index, CHUNK_GRID[0])))
 
     def __str__(self):
         return str(self._chunks)
@@ -190,7 +212,7 @@ class RegionChunk(Chunk):
         *args,
         region : RegionFile = None,
         pos : tuple = (),  # (x, z) relative to region
-        timestamp : int = 0,  # could be time.gmtime(timestamp)
+        timestamp : int = 0,  # default is actually now()
         compression : int = COMPRESSION_ZLIB,
         **kwargs
     ):
@@ -204,12 +226,12 @@ class RegionChunk(Chunk):
         self = super().parse(io.BytesIO(data), *args, **kwargs)
         self.region = region
         self.pos = pos
-        self.timestamp = timestamp or int(time.time())
+        self.timestamp = timestamp or now()
         self.compression = compression
 
         return self
 
-    def write(self, buff, *args, **kwargs) -> int:
+    def write(self, buff, *args, update_timestamp=False, **kwargs) -> int:
         with io.BytesIO() as b:
             super().write(b, *args, **kwargs)
             data = self.compress[self.compression](b.getbuffer())
@@ -217,6 +239,8 @@ class RegionChunk(Chunk):
         header = struct.Struct(CHUNK_HEADER_FMT)
         size  = buff.write(header.pack(length + CHUNK_COMPRESSION_BYTES, self.compression))
         size += buff.write(data)
+        if update_timestamp:
+            self.timestamp = now()
         assert size == header.size + length
         return size
 
@@ -230,9 +254,30 @@ class RegionChunk(Chunk):
         return f'<{self.__class__.__name__}({self.pos}, {self.world_pos}, {self.timestamp})>'
 
 
+def num_sectors(size):
+    """Helper to calculate the number of sectors in size bytes"""
+    # Faster than math.ceil(size / SECTOR_BYTES)
+    # Not a RegionFile static method so its other static methods can call this
+    sectors = (size // SECTOR_BYTES)
+    if (size % SECTOR_BYTES):
+        sectors += 1
+    return sectors
+
+
 def isodate(secs:int) -> str:
+    """Return a formated date string in local time from a timestamp
+
+    Example: isodate(1234567890) -> '2009-02-13 21:31:30'
+    """
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(secs))
 
+
+def now() -> int:
+    """Return current time as a timestamp (seconds since epoch)
+
+    Example: now() -> 1576027129 (if called on 2019-12-11 01:18:49 GMT)
+    """
+    return int(time.time())
 
 # Just a convenience wrapper
 load = RegionFile.load
