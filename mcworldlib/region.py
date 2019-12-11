@@ -107,6 +107,7 @@ class RegionFile(collections.abc.MutableMapping):
                 length,
                 region=self,
                 pos=pos,
+                offset=offset,
                 timestamp=timestamp,
                 compression=compression,
             )
@@ -220,8 +221,10 @@ class RegionChunk(Chunk):
     Being in a Region extends Chunk with several extra attributes:
     region      -- parent RegionFile which this Chunk belongs to
     pos         -- (x, z) relative position in Region, also its key in region.chunks
+    offset      --
     timestamp   --
     compression --
+    dirty
     """
     compress = {
         COMPRESSION_NONE: lambda _:_,
@@ -237,8 +240,10 @@ class RegionChunk(Chunk):
     def __init__(self, **tags):
         self.region = None
         self.pos = ()
+        self.offset = 0
         self.timestamp = 0
         self.compression = COMPRESSION_NONE
+        self.dirty = True  # For now
         super().__init__(**tags)
 
     @property
@@ -253,6 +258,7 @@ class RegionChunk(Chunk):
         *args,
         region : RegionFile = None,
         pos : tuple = (),  # (x, z) relative to region
+        offset : int = 0,  # absolute, in bytes
         timestamp : int = 0,  # default is actually now()
         compression : int = COMPRESSION_ZLIB,
         **kwargs
@@ -267,6 +273,7 @@ class RegionChunk(Chunk):
         self = super().parse(io.BytesIO(data), *args, **kwargs)
         self.region = region
         self.pos = pos
+        self.offset = offset
         self.timestamp = timestamp or now()
         self.compression = compression
 
