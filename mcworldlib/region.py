@@ -80,13 +80,11 @@ class RegionFile(collections.abc.MutableMapping):
         header = struct.Struct(CHUNK_HEADER_FMT)
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)
         timestamps = numpy.fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=count)
-        for pos in ((x, z) for x in range(CHUNK_GRID[0]) for z in range(CHUNK_GRID[1])):
-            location  = locations[ pos[0] + CHUNK_GRID[0] * pos[1]]
-            timestamp = timestamps[pos[0] + CHUNK_GRID[0] * pos[1]]
-
+        for index, (location, timestamp) in enumerate(zip(locations, timestamps)):
             if location == 0:
                 continue
 
+            pos = tuple(reversed(divmod(index, CHUNK_GRID[0])))  # (x, z)
             offset = location >> (8 * CHUNK_SECTOR_COUNT_BYTES)
             sector_count = location & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)
             buff.seek(offset * SECTOR_BYTES)
