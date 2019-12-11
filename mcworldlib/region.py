@@ -57,6 +57,13 @@ class RegionFile(collections.abc.MutableMapping):
         self._chunks = chunks
         self.filename = None
 
+    @property
+    def chunks(self):
+        return self.values()
+    @chunks.setter
+    def chunks(self, chunks):
+        self._chunks = {chunk.pos: chunk for chunk in chunks}
+
     @classmethod
     def from_buffer(cls, buff):
         """Load region file from a file-like object."""
