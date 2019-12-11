@@ -123,9 +123,38 @@ class RegionFile(collections.abc.MutableMapping):
         with open(filename, 'wb') as buff:
             self.write(buff, *args, **kwargs)
 
-    def write(self, buff):
-        # TODO: add padding! (last chunk)
-        raise NotImplementedError  # yet
+    def write(self, buff, *args, **kwargs):
+        #TODO: be smart and do not overwrite the whole file
+        #      Use chunk.dirty and a good (re-)allocation algorithm
+        count = CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
+        locations  = numpy.zeros(count, dtype=f'>u{CHUNK_LOCATION_BYTES}')
+        timestamps = numpy.zeros(count, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}')
+
+        offset = locations.nbytes + timestamps.nbytes  # initial, in bytes
+        written = 0
+        for pos, chunk in self.items():
+            buff.seek(offset)
+
+            length = chunk.write(buff, *args, **kwargs)
+            written += length
+
+            index = self._index_from_position(pos)
+            location = self._pack_location(offset, length)
+            locations[ index] = location
+            timestamps[index] = chunk.timestamp
+
+            offset += num_sectors(length) * SECTOR_BYTES
+
+        # Pad the last chunk.
+        pad = num_sectors(length) * SECTOR_BYTES - length
+        if pad:
+            buff.seek(offset - pad)
+            written += buff.write(b'\x00' * pad)
+
+        buff.seek(0)
+        written += buff.write( locations.tobytes())
+        written += buff.write(timestamps.tobytes())
+        return written
 
     @staticmethod
     def _unpack_location(location):
@@ -135,11 +164,23 @@ class RegionFile(collections.abc.MutableMapping):
                 (location  & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)))
 
     @staticmethod
+    def _pack_location(offset, length):
+        """Helper to pack chunk offset (in bytes) and length to location format."""
+        # more hackish bitwise operations
+        return ((num_sectors(offset) << (8 *    CHUNK_SECTOR_COUNT_BYTES)) |
+                (num_sectors(length)  & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)))
+
+    @staticmethod
     def _chunk_positions():
         """Convenience iterator on chunk positions"""
         return ((x, z)
                 for x in range(CHUNK_GRID[0])
                 for z in range(CHUNK_GRID[1]))
+
+    @staticmethod
+    def _index_from_position(pos):
+        """Helper to get the location array index from a (x, z) chunk position"""
+        return pos[0] + CHUNK_GRID[0] * pos[1]
 
     @staticmethod
     def _position_from_index(index):
