@@ -24,10 +24,14 @@ import zlib
 
 import numpy
 
-# TODO:
-# - Root Tag (Compound)
-# - Auto-casting on assignment based on current type:
-#   compound['string'] = 'foo' -> compound['string'] = String('foo')
+# TODO: (and suggest to nbtlib)
+# - class Root(Compound): transparently handle the unnamed [''] root tag
+#   - improve upon nbtlib.File.root property: self['x'] -> self['']['x']
+#   - both nbtlib.File and region.Chunk would inherit from it
+#   - completely hide the root from outside, re-add it only on .write()
+# - Auto-casting value to tag on assignment based on current type
+#   - compound['string'] = 'foo' -> compound['string'] = String('foo')
+#   - maybe this is only meant for nbtlib.Schema?
 from nbtlib import Compound, Path
 
 
@@ -58,11 +62,12 @@ class RegionFile(collections.abc.MutableMapping):
         filename -- The name of the file
     """
     def __init__(self, **chunks):
-        self._chunks = chunks
-        self.filename = None
+        self._chunks:   dict  = chunks
+        self.filename:  str   = None
 
     @property
     def chunks(self):
+        """Convenience to handle chunks as sequence instead of mapping"""
         return self.values()
     @chunks.setter
     def chunks(self, chunks):
@@ -84,11 +89,12 @@ class RegionFile(collections.abc.MutableMapping):
     @classmethod
     def parse(cls, buff):
         """Parse a buffer data in Region format, build an instance and return it
+
         https://minecraft.gamepedia.com/Region_file_format
         """
         self = cls()
-        count = CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
-        header = struct.Struct(CHUNK_HEADER_FMT)
+        count = self._max_chunks()
+        header = struct.Struct(CHUNK_HEADER_FMT)  # pre-compile here, outside chunk loop
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)
         timestamps = numpy.fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=count)
         for index, (location, timestamp) in enumerate(zip(locations, timestamps)):
@@ -101,6 +107,8 @@ class RegionFile(collections.abc.MutableMapping):
             buff.seek(offset)
             chunk = RegionChunk.parse(buff, header=header)
 
+            # TODO: Replace asserts with proper Exceptions and/or logging
+
             # ~2001-09-09 GMT
             assert timestamp  > 1000000000, \
                 f'Invalid timestamp for chunk {pos}: {timestamp} ({isodate(timestamp)})'
@@ -112,7 +120,6 @@ class RegionFile(collections.abc.MutableMapping):
             chunk.region = self
             chunk.pos = pos
             chunk.offset = offset
-            chunk.sector_count = sector_count
             chunk.timestamp = timestamp
 
             self[pos] = chunk
@@ -136,7 +143,7 @@ class RegionFile(collections.abc.MutableMapping):
 
         #TODO: be smart and do not overwrite the whole file
         #      Use chunk.dirty and a good (re-)allocation algorithm
-        count = CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
+        count = self._max_chunks()
         locations  = numpy.zeros(count, dtype=f'>u{CHUNK_LOCATION_BYTES}')
         timestamps = numpy.zeros(count, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}')
 
@@ -190,6 +197,11 @@ class RegionFile(collections.abc.MutableMapping):
         """Helper to get the (x, z) chunk position from a location array index"""
         return tuple(reversed(divmod(index, CHUNK_GRID[0])))
 
+    @staticmethod
+    def _max_chunks():
+        """Just a helper for DRY"""
+        return CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
+
     def __str__(self):
         return str(self._chunks)
 
@@ -212,7 +224,7 @@ class RegionFile(collections.abc.MutableMapping):
     def __exit__(self, exc_type, exc_val, exc_tb): self.save()  # @UnusedVariable
 
 
-# TODO: make it an nbtlib.Schema
+# TODO: create an nbtlib.Schema for it
 class Chunk(Compound):
     __slots__ = ()
 
@@ -222,7 +234,7 @@ class RegionChunk(Chunk):
 
     Being in a Region extends Chunk with several extra attributes:
     region       -- parent RegionFile which this Chunk belongs to
-    pos          -- (x, z) relative position in Region, also its key in region.chunks
+    pos          -- (x, z) relative position in Region, also its key in region mapping
     offset       --
     sector_count --
     timestamp    --
@@ -268,9 +280,11 @@ class RegionChunk(Chunk):
     def parse(cls,
         buff,  # bytes or file-like buffer
         *args,
-        header : struct.Struct = None,
+        header: struct.Struct = None,
         **kwargs
     ):
+        # header as optional argument is just a performance improvement that allows
+        # Struct format to be pre-compiled by caller, outside the loop
         if header is None:
             header = struct.Struct(CHUNK_HEADER_FMT)
 
