@@ -18,6 +18,7 @@ import collections.abc
 import gzip
 import io
 import os.path
+import re
 import struct
 import time
 import zlib
@@ -55,15 +56,25 @@ COMPRESSION_TYPES = (
 )
 
 
+class MCWorldLibError(Exception): pass
+class RegionError(MCWorldLibError): pass
+class ChunkError(MCWorldLibError): pass
+
+
 class RegionFile(collections.abc.MutableMapping):
     """Collection of Chunks in Region file in Anvil (.mca) file format.
 
     Attributes:
         filename -- The name of the file
     """
+    _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
+
+    __slots__ = ('_chunks', 'filename', 'pos')
+
     def __init__(self, **chunks):
-        self._chunks:   dict  = chunks
-        self.filename:  str   = None
+        self._chunks:   dict   = chunks
+        self.filename:  str    = None
+        self.pos:       tuple  = ()
 
     @property
     def chunks(self):
@@ -74,25 +85,27 @@ class RegionFile(collections.abc.MutableMapping):
         self._chunks = {chunk.pos: chunk for chunk in chunks}
 
     @classmethod
-    def from_buffer(cls, buff):
-        """Load region file from a file-like object."""
-        self = cls.parse(buff)
-        self.filename = getattr(buff, 'name', self.filename)
-        return self
-
-    @classmethod
     def load(cls, filename):
         """Load region file from a path."""
         with open(filename, 'rb') as buff:
-            return cls.from_buffer(buff)
+            return cls.parse(buff)
 
     @classmethod
     def parse(cls, buff):
-        """Parse a buffer data in Region format, build an instance and return it
+        """Parse region from file-like object, build an instance and return it
 
         https://minecraft.gamepedia.com/Region_file_format
         """
         self = cls()
+
+        self.filename = getattr(buff, 'name', None)
+        if self.filename:
+            print(self.filename)
+            m = re.fullmatch(self._re_filename, os.path.basename(self.filename))
+            if m:
+                print(m)
+                self.pos = (int(m.group('rx')), int(m.group('rz')))
+
         count = self._max_chunks()
         header = struct.Struct(CHUNK_HEADER_FMT)  # pre-compile here, outside chunk loop
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)
@@ -173,6 +186,22 @@ class RegionFile(collections.abc.MutableMapping):
         written += buff.write(timestamps.tobytes())
         return written
 
+    def get_chunk(self, cx, cz):
+        """Return the chunk at world chunk coordinate (cx, cz)
+
+        For local, region coordinates simply use region[x, z]
+        """
+        if not self.pos:
+            raise RegionError(f"Invalid region position coordinates: {self.pos!r}")
+        cpos = (cx - self.pos[0] * CHUNK_GRID[0],
+                cz - self.pos[1] * CHUNK_GRID[1])
+        if cpos >= CHUNK_GRID:
+            raise RegionError(
+                f"Chunk at world ({cx}, {cz}) does not belong to this region {self.pos}."
+                f" Try region ({cx//CHUNK_GRID[0]}, {cz//CHUNK_GRID[0]})."
+            )
+        return self[cpos]
+
     @staticmethod
     def _unpack_location(location):
         """Helper to extract chunk offset (in bytes) and sector_count from location."""
@@ -202,15 +231,6 @@ class RegionFile(collections.abc.MutableMapping):
         """Just a helper for DRY"""
         return CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
 
-    def __str__(self):
-        return str(self._chunks)
-
-    def __repr__(self):
-        basename = ""
-        if self.filename:
-            basename = f'{os.path.basename(self.filename)}: '
-        return f'<{self.__class__.__name__}({basename}{len(self)} chunks)>'
-
     # ABC boilerplate
     def __getitem__(self, key): return self._chunks[key]
     def __iter__(self): return iter(self._chunks)  # for key in self._ckunks: yield key
@@ -222,6 +242,15 @@ class RegionFile(collections.abc.MutableMapping):
     # Context Manager boilerplate
     def __enter__(self): return self
     def __exit__(self, exc_type, exc_val, exc_tb): self.save()  # @UnusedVariable
+
+    def __str__(self):
+        return str(self._chunks)
+
+    def __repr__(self):
+        basename = ""
+        if self.filename:
+            basename = f'{os.path.basename(self.filename)}: '
+        return f'<{self.__class__.__name__}({basename}{len(self)} chunks)>'
 
 
 # TODO: create an nbtlib.Schema for it
@@ -239,7 +268,7 @@ class RegionChunk(Chunk):
     sector_count --
     timestamp    --
     compression  --
-    dirty
+    dirty        --
     """
     __slots__ = (
         'region',
