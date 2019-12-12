@@ -11,7 +11,7 @@ Exported attributes:
     RegionFile  -- Collection of RegionChunks in an Region file, inherits from `MutableMapping`
 """
 
-__all__ = ['load', 'RegionFile']  # Not worth exporting RegionChunk yet
+__all__ = ['load', 'RegionFile']  # Not worth exporting Chunk or RegionChunk yet
 
 
 import collections.abc
@@ -24,6 +24,10 @@ import zlib
 
 import numpy
 
+# TODO:
+# - Root Tag (Compound)
+# - Auto-casting on assignment based on current type:
+#   compound['string'] = 'foo' -> compound['string'] = String('foo')
 from nbtlib import Compound, Path
 
 
@@ -95,29 +99,24 @@ class RegionFile(collections.abc.MutableMapping):
             offset, sector_count = self._unpack_location(location)
 
             buff.seek(offset)
-            length, compression = header.unpack(buff.read(header.size))
-            length -= CHUNK_COMPRESSION_BYTES  # already read
-            sectors = num_sectors(length + header.size)
+            chunk = RegionChunk.parse(buff, header=header)
 
             # ~2001-09-09 GMT
             assert timestamp  > 1000000000, \
-                f'invalid timestamp for chunk {pos}: {timestamp} ({isodate(timestamp)})'
-            assert sector_count == sectors, \
-                f'length mismatch in chunk {pos}: length={length}, but sectors={sector_count}' \
-                f' (should be {sectors} for {SECTOR_BYTES}-byte sectors)'
-            assert compression in COMPRESSION_TYPES, \
-                f'invalid compression type for chunk {pos}, must be one of' \
-                f' {COMPRESSION_TYPES}: {compression}'
+                f'Invalid timestamp for chunk {pos}: {timestamp} ({isodate(timestamp)})'
 
-            self[pos] = RegionChunk.parse(
-                buff,
-                length,
-                region=self,
-                pos=pos,
-                offset=offset,
-                timestamp=timestamp,
-                compression=compression,
-            )
+            assert sector_count == chunk.sector_count, \
+                f'Length mismatch in chunk {pos}: region header declares {sector_count}' \
+                f' {SECTOR_BYTES}-byte sectors, but chunk data required {chunk.sector_count}.'
+
+            chunk.region = self
+            chunk.pos = pos
+            chunk.offset = offset
+            chunk.sector_count = sector_count
+            chunk.timestamp = timestamp
+
+            self[pos] = chunk
+
         return self
 
     def save(self, filename=None, *args, **kwargs):
@@ -222,17 +221,19 @@ class RegionChunk(Chunk):
     """Chunk in a Region.
 
     Being in a Region extends Chunk with several extra attributes:
-    region      -- parent RegionFile which this Chunk belongs to
-    pos         -- (x, z) relative position in Region, also its key in region.chunks
-    offset      --
-    timestamp   --
-    compression --
+    region       -- parent RegionFile which this Chunk belongs to
+    pos          -- (x, z) relative position in Region, also its key in region.chunks
+    offset       --
+    sector_count --
+    timestamp    --
+    compression  --
     dirty
     """
     __slots__ = (
         'region',
         'pos',
         'offset',
+        'sector_count',
         'timestamp',
         'compression',
         'dirty',
@@ -248,14 +249,15 @@ class RegionChunk(Chunk):
         COMPRESSION_ZLIB: zlib.decompress,
     }
 
-    def __init__(self, **tags):
-        self.region = None
-        self.pos = ()
-        self.offset = 0
-        self.timestamp = 0
-        self.compression = COMPRESSION_NONE
-        self.dirty = True  # For now
-        super().__init__(**tags)
+    def __init__(self, *args, **tags):
+        super().__init__(*args, **tags)
+        self.region:        RegionFile  = None
+        self.pos:           tuple       = ()  # (x, z)
+        self.offset:        int         = 0
+        self.sector_count:  int         = 0
+        self.timestamp:     int         = 0
+        self.compression:   int         = COMPRESSION_NONE  # = 0
+        self.dirty:         bool        = True  # For now
 
     @property
     def world_pos(self):
@@ -264,28 +266,28 @@ class RegionChunk(Chunk):
 
     @classmethod
     def parse(cls,
-        data,  # bytes or file-like buffer
-        length: int = -1,
+        buff,  # bytes or file-like buffer
         *args,
-        region : RegionFile = None,
-        pos : tuple = (),  # (x, z) relative to region
-        offset : int = 0,  # absolute, in bytes
-        timestamp : int = 0,  # default is actually now()
-        compression : int = COMPRESSION_ZLIB,
+        header : struct.Struct = None,
         **kwargs
     ):
-        assert (not pos or
-                (len(pos) == len(CHUNK_GRID) and (0, 0) <= pos < CHUNK_GRID)), \
-               f'invalid position for grid {CHUNK_GRID}: {pos}'
-        if hasattr(data, 'read'):  # assume file-like
-            data = data.read(length)
-        data = cls.decompress[compression](data)
+        if header is None:
+            header = struct.Struct(CHUNK_HEADER_FMT)
 
+        if not hasattr(buff, 'read'):  # assume bytes data
+            buff = io.BytesIO(buff)
+
+        length, compression = header.unpack(buff.read(header.size))
+        length -= CHUNK_COMPRESSION_BYTES  # already read
+
+        assert compression in COMPRESSION_TYPES, \
+            f'invalid compression type for chunk, must be one of' \
+            f' {COMPRESSION_TYPES}: {compression}'
+
+        data = cls.decompress[compression](buff.read(length))
         self = super().parse(io.BytesIO(data), *args, **kwargs)
-        self.region = region
-        self.pos = pos
-        self.offset = offset
-        self.timestamp = timestamp or now()
+
+        self.sector_count = num_sectors(length + header.size)
         self.compression = compression
 
         return self
