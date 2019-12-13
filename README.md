@@ -1,7 +1,7 @@
 # mcworldlib
 Yet another library to manipulate Minecraft data, inspired by pymclevel
 
-```py
+```pycon
 >>> import mcworldlib as mc
 >>> world = mc.load('New World')
 >>> mc.pretty(world)
@@ -71,7 +71,7 @@ Yet another library to manipulate Minecraft data, inspired by pymclevel
 
 Another not so noble usage example:
 
-```
+```python
 import mcworldlib as mc
 
 world = mc.load('New World')
