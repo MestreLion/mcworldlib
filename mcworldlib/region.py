@@ -66,10 +66,14 @@ class RegionFile(collections.abc.MutableMapping):
 
     Attributes:
         filename -- The name of the file
+        pos      -- Position (rx, rz) coordinates of Region in World
     """
+    __slots__ = (
+        '_chunks',
+        'filename',
+        'pos',
+    )
     _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
-
-    __slots__ = ('_chunks', 'filename', 'pos')
 
     def __init__(self, **chunks):
         self._chunks:   dict   = chunks
@@ -99,12 +103,7 @@ class RegionFile(collections.abc.MutableMapping):
         self = cls()
 
         self.filename = getattr(buff, 'name', None)
-        if self.filename:
-            print(self.filename)
-            m = re.fullmatch(self._re_filename, os.path.basename(self.filename))
-            if m:
-                print(m)
-                self.pos = (int(m.group('rx')), int(m.group('rz')))
+        self.pos = self.pos_from_filename(self.filename)
 
         count = self._max_chunks()
         header = struct.Struct(CHUNK_HEADER_FMT)  # pre-compile here, outside chunk loop
@@ -201,6 +200,17 @@ class RegionFile(collections.abc.MutableMapping):
                 f" Try region ({cx//CHUNK_GRID[0]}, {cz//CHUNK_GRID[0]})."
             )
         return self[cpos]
+
+    @classmethod
+    def pos_from_filename(cls, filename):
+        if not filename:
+            return None
+
+        m = re.fullmatch(cls._re_filename, os.path.basename(filename))
+        if not m:
+            return None
+
+        return (int(m.group('rx')), int(m.group('rz')))
 
     @staticmethod
     def _unpack_location(location):
