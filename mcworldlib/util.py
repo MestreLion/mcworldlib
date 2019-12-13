@@ -13,12 +13,17 @@ __all__ = [
     'Pos',
     'PosXZ',
     'pretty',
+    'MINECRAFT_SAVES_DIR'
 ]
 
 
-import time
+import os.path
 import pprint
+import time
 import typing
+
+
+MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
 
 
 class Pos(typing.NamedTuple):

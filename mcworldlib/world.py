@@ -16,6 +16,7 @@ import os.path
 
 from . import level
 from . import region
+from . import util as u
 
 
 class World(level.Level):
@@ -40,6 +41,14 @@ class World(level.Level):
             # Assume directory containing level.dat
             self = super().load(os.path.join(path, 'level.dat'))
             self.path = path
+        else:
+            # Last chance: try path as name of a  minecraft save dir
+            path = os.path.join(u.MINECRAFT_SAVES_DIR, path)
+            if os.path.isdir(path):
+                self = super().load(os.path.join(path, 'level.dat'))
+                self.path = path
+            else:
+                self = cls()
 
         # /region
         self.regions = {}
