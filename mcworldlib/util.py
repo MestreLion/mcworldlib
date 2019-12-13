@@ -9,10 +9,15 @@ Exported items:
     PosXZ -- Class representing a (x, z)    2D position coordinate, inherits from NamedTuple
 """
 
-__all__ = ['Pos', 'Pos2D']  # Not worth exporting RegionChunk yet
+__all__ = [
+    'Pos',
+    'PosXZ',
+    'pretty',
+]
 
 
 import time
+import pprint
 import typing
 
 
@@ -49,3 +54,10 @@ def now() -> int:
     Example: now() -> 1576027129 (if called on 2019-12-11 01:18:49 GMT)
     """
     return int(time.time())
+
+
+def pretty(obj, indent=4):
+    if hasattr(obj, 'pretty'):
+        print(obj.pretty(indent=indent))
+    else:
+        pprint.pprint(obj, indent=indent)

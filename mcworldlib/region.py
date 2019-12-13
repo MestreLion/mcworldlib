@@ -243,6 +243,11 @@ class RegionFile(collections.abc.MutableMapping):
     def __enter__(self): return self
     def __exit__(self, exc_type, exc_val, exc_tb): self.save()  # @UnusedVariable
 
+    def pretty(self, indent=4):
+        s0 = '\n' + indent * ' '
+        s1 = f',{s0}'
+        return '{' + s0 + s1.join(f'{k}: {v}' for k, v in self.items()) + '\n}'
+
     def __str__(self):
         return str(self._chunks)
 

@@ -22,6 +22,7 @@ from .level  import *
 from .nbt    import *
 from .region import *
 from .world  import *
+from .util   import *
 
 __project__ = "MCWorldLib"
 __author__  = "Rodrigo Silva (MestreLion)"

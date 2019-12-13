@@ -40,6 +40,9 @@ class Root(Compound):
     """Unnamed Compound tag, used as root tag in files and chunks"""
     __slots__ = ()
 
+    def pretty(self, indent=4, compact=False, quote=None):
+        return Serializer(indent=indent, compact=compact, quote=quote).serialize(self)
+
 
 class File(Root, nbtlib_File):
     # Lame overload so it inherits from Root
