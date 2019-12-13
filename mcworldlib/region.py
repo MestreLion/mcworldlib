@@ -4,14 +4,12 @@
 
 """Region files and its chunks.
 
-Exported attributes:
-    load        -- Helper function to load mca/mcr files, alias to RegionFile.load()
-    Chunk       -- Chunk's NBT, inherits inherits from `nbtlib.Compound`
-    RegionChunk -- Chunk in a Region, inherits from `Chunk`
-    RegionFile  -- Collection of RegionChunks in an Region file, inherits from `MutableMapping`
+Exported items:
+    RegionChunk -- Chunk in a Region, inherits from chunk.Chunk
+    RegionFile  -- Collection of RegionChunks in an Region file, inherits from MutableMapping
 """
 
-__all__ = ['load', 'RegionFile']  # Not worth exporting Chunk or RegionChunk yet
+__all__ = ['RegionFile']  # Not worth exporting RegionChunk yet
 
 
 import collections.abc
@@ -20,20 +18,13 @@ import io
 import os.path
 import re
 import struct
-import time
 import zlib
 
 import numpy
 
-# TODO: (and suggest to nbtlib)
-# - class Root(Compound): transparently handle the unnamed [''] root tag
-#   - improve upon nbtlib.File.root property: self['x'] -> self['']['x']
-#   - both nbtlib.File and region.Chunk would inherit from it
-#   - completely hide the root from outside, re-add it only on .write()
-# - Auto-casting value to tag on assignment based on current type
-#   - compound['string'] = 'foo' -> compound['string'] = String('foo')
-#   - maybe this is only meant for nbtlib.Schema?
-from nbtlib import Compound, Path
+from . import chunk
+from . import util as u
+from .nbt import Path as P  # because it deserves a shorthand
 
 
 # https://minecraft.gamepedia.com/Region_file_format
@@ -91,8 +82,7 @@ class RegionFile(collections.abc.MutableMapping):
     @classmethod
     def load(cls, filename):
         """Load region file from a path."""
-        with open(filename, 'rb') as buff:
-            return cls.parse(buff)
+        return cls.parse(open(filename, 'rb'))
 
     @classmethod
     def parse(cls, buff):
@@ -123,7 +113,7 @@ class RegionFile(collections.abc.MutableMapping):
 
             # ~2001-09-09 GMT
             assert timestamp  > 1000000000, \
-                f'Invalid timestamp for chunk {pos}: {timestamp} ({isodate(timestamp)})'
+                f'Invalid timestamp for chunk {pos}: {timestamp} ({u.isodate(timestamp)})'
 
             assert sector_count == chunk.sector_count, \
                 f'Length mismatch in chunk {pos}: region header declares {sector_count}' \
@@ -263,12 +253,7 @@ class RegionFile(collections.abc.MutableMapping):
         return f'<{self.__class__.__name__}({basename}{len(self)} chunks)>'
 
 
-# TODO: create an nbtlib.Schema for it
-class Chunk(Compound):
-    __slots__ = ()
-
-
-class RegionChunk(Chunk):
+class RegionChunk(chunk.Chunk):
     """Chunk in a Region.
 
     Being in a Region extends Chunk with several extra attributes:
@@ -312,8 +297,8 @@ class RegionChunk(Chunk):
 
     @property
     def world_pos(self):
-        return (int(self.get(Path("''.Level.xPos"))),
-                int(self.get(Path("''.Level.zPos"))))
+        return (int(self.get(P("''.Level.xPos"))),
+                int(self.get(P("''.Level.zPos"))))
 
     @classmethod
     def parse(cls,
@@ -354,7 +339,7 @@ class RegionChunk(Chunk):
         size  = buff.write(header.pack(length + CHUNK_COMPRESSION_BYTES, self.compression))
         size += buff.write(data)
         if update_timestamp:
-            self.timestamp = now()
+            self.timestamp = u.now()
         assert size == header.size + length
         return size
 
@@ -362,7 +347,7 @@ class RegionChunk(Chunk):
         """Just like NTBExplorer!"""
         return (f"<Chunk {list(self.pos)}"
                 f" in world at {self.world_pos}"
-                f" saved on {isodate(self.timestamp)}>")
+                f" saved on {u.isodate(self.timestamp)}>")
 
     def __repr__(self):
         return f'<{self.__class__.__name__}({self.pos}, {self.world_pos}, {self.timestamp})>'
@@ -377,21 +362,6 @@ def num_sectors(size):
         sectors += 1
     return sectors
 
-
-def isodate(secs:int) -> str:
-    """Return a formated date string in local time from a timestamp
-
-    Example: isodate(1234567890) -> '2009-02-13 21:31:30'
-    """
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(secs))
-
-
-def now() -> int:
-    """Return current time as a timestamp (seconds since epoch)
-
-    Example: now() -> 1576027129 (if called on 2019-12-11 01:18:49 GMT)
-    """
-    return int(time.time())
 
 # Just a convenience wrapper
 load = RegionFile.load
