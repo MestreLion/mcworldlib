@@ -13,6 +13,7 @@ __all__ = [
     'Pos',
     'PosXZ',
     'pretty',
+    'MCError',
     'MINECRAFT_SAVES_DIR'
 ]
 
@@ -24,6 +25,14 @@ import typing
 
 
 MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
+
+
+class MCError(Exception):
+    """Base exception for business-logic, expected and handled custom exceptions.
+
+    All custom exceptions must be a subclass of this.
+    """
+    pass
 
 
 class Pos(typing.NamedTuple):

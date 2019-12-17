@@ -47,9 +47,8 @@ COMPRESSION_TYPES = (
 )
 
 
-class MCWorldLibError(Exception): pass
-class RegionError(MCWorldLibError): pass
-class ChunkError(MCWorldLibError): pass
+class RegionError(u.MCError): pass
+class ChunkError(u.MCError): pass
 
 
 class RegionFile(collections.abc.MutableMapping):
