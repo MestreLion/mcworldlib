@@ -41,7 +41,7 @@ class Pos(typing.NamedTuple):
 class PosXZ(typing.NamedTuple):
     x: int
     z: int
-    def as_zx (self): return (self.z, self.xz)
+    def as_zx (self): return (self.z, self.x)
 
 
 
