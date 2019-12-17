@@ -114,9 +114,12 @@ class RegionFile(collections.abc.MutableMapping):
             assert timestamp  > 1000000000, \
                 f'Invalid timestamp for chunk {pos}: {timestamp} ({u.isodate(timestamp)})'
 
-            assert sector_count == chunk.sector_count, \
-                f'Length mismatch in chunk {pos}: region header declares {sector_count}' \
-                f' {SECTOR_BYTES}-byte sectors, but chunk data required {chunk.sector_count}.'
+            # Sometimes Minecraft saves sector_count + 1 when chunk length
+            # (including header) is an exact multiple of SECTOR_BYTES
+            assert chunk.sector_count <= sector_count <= chunk.sector_count + 1, \
+                f'Length mismatch for region {self.pos} in chunk {pos}:' \
+                f' region header declares {sector_count} {SECTOR_BYTES}-byte sectors,' \
+                f' but chunk data required {chunk.sector_count}.'
 
             chunk.region = self
             chunk.pos = pos
