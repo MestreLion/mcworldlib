@@ -15,6 +15,7 @@ __all__ = ['load', 'World']
 import os.path
 
 from . import level
+from . import nbt
 from . import region
 from . import util as u
 
@@ -23,8 +24,32 @@ class World(level.Level):
     """Save directory and all related files and objects"""
     __slots__ = (
         'path',
-        'regions'
+        'regions',
     )
+
+    @property
+    def name(self):
+        return self.root.get('LevelName', os.path.dirname(self.path))
+    @name.setter
+    def name(self, value):
+        self.root['LevelName'] = nbt.String(value)
+
+    @property
+    def level(self):
+        """Somewhat redundant API shortcut, as for now World *is* a Level"""
+        return self.root['Data']
+
+    def get_player(self, name=None):
+        """Get a named player (server) or the world default player"""
+        # Single Player
+        if name is None or name == 'Player':
+            try:
+                return self.player
+            except Exception:
+                raise u.MCError("Player not found in world '%s': %s" %
+                                (self.name, name))
+        # Multiplayer
+        raise NotImplementedError
 
     @classmethod
     def load(cls, path):
