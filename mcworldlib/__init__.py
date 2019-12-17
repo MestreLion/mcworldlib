@@ -18,6 +18,7 @@
 """Yet another python library to manipulate Minecraft save data"""
 
 from .chunk  import *
+from .cli    import *
 from .level  import *
 from .nbt    import *
 from .region import *
