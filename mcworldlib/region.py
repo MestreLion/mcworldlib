@@ -185,7 +185,7 @@ class RegionFile(collections.abc.MutableMapping):
             raise RegionError(f"Invalid region position coordinates: {self.pos!r}")
         cpos = (cx - self.pos[0] * CHUNK_GRID[0],
                 cz - self.pos[1] * CHUNK_GRID[1])
-        if cpos >= CHUNK_GRID:
+        if not ((0, 0) <= cpos < CHUNK_GRID):
             raise RegionError(
                 f"Chunk at world ({cx}, {cz}) does not belong to this region {self.pos}."
                 f" Try region ({cx//CHUNK_GRID[0]}, {cz//CHUNK_GRID[0]})."
