@@ -20,12 +20,21 @@ from . import region
 from . import util as u
 
 
+class WorldNotFoundError(u.MCError, IOError): pass
+
+
 class World(level.Level):
     """Save directory and all related files and objects"""
+
     __slots__ = (
         'path',
         'regions',
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.path = ""
+        self.regions = {}
 
     @property
     def name(self):
@@ -53,7 +62,7 @@ class World(level.Level):
 
     @classmethod
     def load(cls, path):
-        # /level.dat
+        # /level.dat and directory path
         if hasattr(path, 'name'):
             # Assume file-like buffer to level.dat
             self = cls.parse(path)
@@ -73,7 +82,8 @@ class World(level.Level):
                 self = super().load(os.path.join(path, 'level.dat'))
                 self.path = path
             else:
-                self = cls()
+                self = cls()  # blank world
+                raise WorldNotFoundError(f"World not found: {path}")
 
         # /region
         self.regions = {}
