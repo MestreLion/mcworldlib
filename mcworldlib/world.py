@@ -38,7 +38,7 @@ class World(level.Level):
 
     @property
     def name(self):
-        return self.root.get('LevelName', os.path.dirname(self.path))
+        return str(self.root.get('LevelName', os.path.basename(self.path)))
     @name.setter
     def name(self, value):
         self.root['LevelName'] = nbt.String(value)
@@ -46,7 +46,7 @@ class World(level.Level):
     @property
     def level(self):
         """Somewhat redundant API shortcut, as for now World *is* a Level"""
-        return self.root['Data']
+        return self.root
 
     def get_player(self, name=None):
         """Get a named player (server) or the world default player"""

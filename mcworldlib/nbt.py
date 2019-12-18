@@ -39,7 +39,22 @@ from nbtlib.literal.serializer import Serializer
 
 class Root(Compound):
     """Unnamed Compound tag, used as root tag in files and chunks"""
+    # Should contain the following from nbtlib_File:
+    # root_name()
+    # root_name.setter()
+    # root()
+    # root.setter()
+    # __repr__()
+
     __slots__ = ()
+    _root_name: Path = None
+
+    def __new__(cls, *args, **kwargs):
+        self = super().__new__(cls, *args, **kwargs)
+        # If a subclass defines _root_name, use it instead of the default
+        if cls._root_name:
+            cls.root_name = property(lambda _: _._root_name)
+        return self
 
     def pretty(self, indent=4, compact=False, quote=None):
         return Serializer(indent=indent, compact=compact, quote=quote).serialize(self)
@@ -48,8 +63,6 @@ class Root(Compound):
 class File(Root, nbtlib_File):
     # Lame overload so it inherits from Root
     __slots__ = ()
-
-
 del nbtlib_File
 
 
