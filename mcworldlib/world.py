@@ -14,6 +14,8 @@ __all__ = ['load', 'World']
 
 import os.path
 
+import tqdm
+
 from . import level
 from . import nbt
 from . import region
@@ -76,7 +78,7 @@ class World(level.Level):
             self = super().load(os.path.join(path, 'level.dat'))
             self.path = path
         else:
-            # Last chance: try path as name of a  minecraft save dir
+            # Last chance: try path as name of a minecraft save dir
             path = os.path.join(u.MINECRAFT_SAVES_DIR, path)
             if os.path.isdir(path):
                 self = super().load(os.path.join(path, 'level.dat'))
@@ -88,7 +90,12 @@ class World(level.Level):
         # /region
         self.regions = {}
         regiondir = os.path.join(self.path, 'region')  # Overworld
-        for filename in os.listdir(regiondir):
+        regions = tqdm.tqdm(
+            os.listdir(regiondir),
+            desc = f"Loading World '{self.name}'",
+            unit = " Region",
+        )
+        for filename in regions:
             path = os.path.join(regiondir, filename)
             pos = region.RegionFile.pos_from_filename(path)
             if not pos:
