@@ -59,6 +59,26 @@ class Root(Compound):
     def pretty(self, indent=4, compact=False, quote=None):
         return Serializer(indent=indent, compact=compact, quote=quote).serialize(self)
 
+    # The following are copy-pasted from nbtlib.File
+
+    @property
+    def root_name(self):
+        """The name of the root nbt tag."""
+        return next(iter(self), None)
+
+    @root_name.setter
+    def root_name(self, value):
+        self[value] = self.pop(self.root_name)
+
+    @property
+    def root(self):
+        """The root nbt tag of the file."""
+        return self[self.root_name]
+
+    @root.setter
+    def root(self, value):
+        self[self.root_name] = value
+
 
 class File(Root, nbtlib_File):
     # Lame overload so it inherits from Root

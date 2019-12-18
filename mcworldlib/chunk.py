@@ -17,3 +17,4 @@ from . import nbt
 # TODO: create an nbt.Schema for it
 class Chunk(nbt.Root):
     __slots__ = ()
+    _root_name = nbt.Path("''.Level")

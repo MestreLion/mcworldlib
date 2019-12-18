@@ -24,7 +24,6 @@ import numpy
 
 from . import chunk
 from . import util as u
-from .nbt import Path as P  # because it deserves a shorthand
 
 
 # https://minecraft.gamepedia.com/Region_file_format
@@ -304,8 +303,8 @@ class RegionChunk(chunk.Chunk):
 
     @property
     def world_pos(self):
-        return (int(self.get(P("''.Level.xPos"))),
-                int(self.get(P("''.Level.zPos"))))
+        return (int(self.root['xPos']),
+                int(self.root['zPos']))
 
     @classmethod
     def parse(cls,
