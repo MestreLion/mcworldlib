@@ -30,6 +30,7 @@ Exported items:
 # - Auto-casting value to tag on assignment based on current type
 #   - compound['string'] = 'foo' -> compound['string'] = String('foo')
 #   - maybe this is only meant for nbtlib.Schema?
+# - String.__str__() should not quote or escape
 from nbtlib.tag import *  # @UnusedWildImport
 from nbtlib.nbt import File as nbtlib_File
 from nbtlib.path import Path  # @UnusedImport
@@ -50,3 +51,6 @@ class File(Root, nbtlib_File):
 
 
 del nbtlib_File
+
+
+String.__str__ = lambda _: str.__str__(_)
