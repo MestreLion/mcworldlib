@@ -63,7 +63,7 @@ class World(level.Level):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, progress=True):
         # /level.dat and directory path
         if hasattr(path, 'name'):
             # Assume file-like buffer to level.dat
@@ -90,11 +90,13 @@ class World(level.Level):
         # /region
         self.regions = {}
         regiondir = os.path.join(self.path, 'region')  # Overworld
-        regions = tqdm.tqdm(
-            os.listdir(regiondir),
-            desc = f"Loading World '{self.name}'",
-            unit = " Region",
-        )
+        regions = os.listdir(regiondir)
+        if progress:
+            regions = tqdm.tqdm(
+                regions,
+                desc = f"Loading World '{self.name}'",
+                unit = " Region",
+            )
         for filename in regions:
             path = os.path.join(regiondir, filename)
             pos = region.RegionFile.pos_from_filename(path)
