@@ -45,13 +45,31 @@ class Pos(typing.NamedTuple):
     def as_yxz(self): return (self.y, self.x, self.z)
     def as_xz (self): return (self.x, self.z)
 
+    def to_int(self): return (int(self.x), int(self.y), int(self.z))
+
+    @classmethod
+    def from_tag(cls, tag):
+        return cls(*tag['Pos'])
+
+    def __str__(self):
+        return str(self.to_int())
+
 
 #TODO: Use it everywhere!
 class PosXZ(typing.NamedTuple):
     x: int
     z: int
+
     def as_zx (self): return (self.z, self.x)
 
+    def to_int(self): return (int(self.x), int(self.z))
+
+    @classmethod
+    def from_tag(cls, tag):
+        return cls(tag['xPos'], tag['zPos'])
+
+    def __str__(self):
+        return str(self.to_int())
 
 
 def isodate(secs:int) -> str:
