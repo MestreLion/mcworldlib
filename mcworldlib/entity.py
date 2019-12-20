@@ -17,6 +17,9 @@ from . import nbt
 from . import util as u
 
 
+_NAMESPACE = 'minecraft'
+
+
 # TODO: create an nbt.Schema for it
 class BaseEntity(nbt.Compound):
     """Base class for all entities"""
@@ -26,14 +29,30 @@ class BaseEntity(nbt.Compound):
 class Entity(BaseEntity):
     """Base for all Entities with id"""
     __slots__ = ()
+    entity_id = None
 
     @property
     def name(self):
-        return self['id'].split(':', 1)[-1].replace('_', ' ').title()
+        return self._name_from_id()
 
     @property
     def pos(self):
         return u.Pos(*self['Pos'])
 
+    @classmethod
+    def subclass(cls, tag):
+        """Return an instance of the appropriate Entity subclass based on entity ID"""
+        return _ENTITY_SUBCLASSES_IDS_MAPPING.setdefault(tag['id'], cls)(tag)
+
+    def _name_from_id(self, eid=None):
+        return (eid or self['id']).split(':', 1)[-1].replace('_', ' ').title()
+
     def __str__(self):
         return f'{self.name} at {self.pos}'
+
+
+_ENTITY_SUBCLASSES_IDS_MAPPING = {
+    (_.entity_id if ':' in _.entity_id else f'{_NAMESPACE}:{_.entity_id}'): _
+    for _ in Entity.__subclasses__()
+    if _.entity_id is not None
+}

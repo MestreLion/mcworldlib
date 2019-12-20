@@ -28,6 +28,6 @@ class Chunk(nbt.Root):
     def parse(cls, buff, *args, **kwargs):
         self = super().parse(buff, *args, **kwargs)
         self.root['Entities'] = nbt.List[entity.Entity](
-            entity.Entity(_) for _ in self.root.get('Entities', ())
+            entity.Entity.subclass(_) for _ in self.root.get('Entities', ())
         )
         return self
