@@ -50,6 +50,15 @@ class World(level.Level):
         """Somewhat redundant API shortcut, as for now World *is* a Level"""
         return self.root
 
+    @property
+    def chunk_count(self):
+        return sum(len(_) for _ in self.regions)
+
+    def get_chunks(self, progress=True):  # @UnusedVariable
+        for region in self.regions.values():
+            for chunk in region.values():
+                yield chunk
+
     def get_player(self, name=None):
         """Get a named player (server) or the world default player"""
         # Single Player
