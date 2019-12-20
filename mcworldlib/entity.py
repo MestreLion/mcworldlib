@@ -51,6 +51,18 @@ class Entity(BaseEntity):
         return f'{self.name} at {self.pos}'
 
 
+class ItemEntity(Entity):
+    __slots__ = ()
+    entity_id = 'item'
+
+    @property
+    def name(self):
+        ename = super().name
+        iname = self._name_from_id(self['Item']['id'])
+        count = int(self['Item']['Count'])
+        return f"{ename}: {count} {iname}"
+
+
 _ENTITY_SUBCLASSES_IDS_MAPPING = {
     (_.entity_id if ':' in _.entity_id else f'{_NAMESPACE}:{_.entity_id}'): _
     for _ in Entity.__subclasses__()
