@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-from setuptools import setup, find_packages
+from importlib import import_module
 from os import path
 
-from importlib import import_module
+from setuptools import setup, find_packages
+
 
 packages = find_packages()
 projname = packages[0]
@@ -27,10 +28,10 @@ setup(
         "Bug Tracker": f"https://github.com/MestreLion/{projname}/issues",
         "Source Code": f"https://github.com/MestreLion/{projname}",
     },
+    license          = 'GPLv3+',
     classifiers      = [
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
-        "License :: DFSG approved",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Natural Language :: English",
         "Operating System :: OS Independent",
