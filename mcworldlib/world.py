@@ -54,8 +54,11 @@ class World(level.Level):
     def chunk_count(self):
         return sum(len(_) for _ in self.regions)
 
-    def get_chunks(self, progress=True):  # @UnusedVariable
-        for region in self.regions.values():
+    def get_chunks(self, progress=True):
+        regions = self.regions.values()
+        if progress:
+            regions = tqdm.tqdm(regions)
+        for region in regions:
             for chunk in region.values():
                 yield chunk
 
