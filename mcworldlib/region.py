@@ -27,7 +27,6 @@ from . import util as u
 
 
 # https://minecraft.gamepedia.com/Region_file_format
-CHUNK_GRID = (32, 32)  # (x, z) chunks in each region file = 1024 chunks per region
 CHUNK_LOCATION_BYTES = 4  # Chunk offset and sector count. Must be power of 2
 CHUNK_TIMESTAMP_BYTES = 4  # Unix timestamp, seconds after epoch.
 CHUNK_SECTOR_COUNT_BYTES = 1  # Assumed to be the least significants from CHUNK_LOCATION_BYTES
@@ -183,12 +182,12 @@ class RegionFile(collections.abc.MutableMapping):
         """
         if not self.pos:
             raise RegionError(f"Invalid region position coordinates: {self.pos!r}")
-        cpos = (cx - self.pos[0] * CHUNK_GRID[0],
-                cz - self.pos[1] * CHUNK_GRID[1])
-        if not ((0, 0) <= cpos < CHUNK_GRID):
+        cpos = (cx - self.pos[0] * u.CHUNK_GRID[0],
+                cz - self.pos[1] * u.CHUNK_GRID[1])
+        if not ((0, 0) <= cpos < u.CHUNK_GRID):
             raise RegionError(
                 f"Chunk at world ({cx}, {cz}) does not belong to this region {self.pos}."
-                f" Try region ({cx//CHUNK_GRID[0]}, {cz//CHUNK_GRID[0]})."
+                f" Try region ({cx//u.CHUNK_GRID[0]}, {cz//u.CHUNK_GRID[0]})."
             )
         return self[cpos]
 
@@ -220,17 +219,17 @@ class RegionFile(collections.abc.MutableMapping):
     @staticmethod
     def _index_from_position(pos):
         """Helper to get the location array index from a (x, z) chunk position"""
-        return pos[0] + CHUNK_GRID[0] * pos[1]
+        return pos[0] + u.CHUNK_GRID[0] * pos[1]
 
     @staticmethod
     def _position_from_index(index):
         """Helper to get the (x, z) chunk position from a location array index"""
-        return tuple(reversed(divmod(index, CHUNK_GRID[0])))
+        return tuple(reversed(divmod(index, u.CHUNK_GRID[0])))
 
     @staticmethod
     def _max_chunks():
         """Just a helper for DRY"""
-        return CHUNK_GRID[0] * CHUNK_GRID[1]  # 1024
+        return u.CHUNK_GRID[0] * u.CHUNK_GRID[1]  # 1024
 
     # ABC boilerplate
     def __getitem__(self, key): return self._chunks[key]

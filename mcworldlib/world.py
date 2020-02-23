@@ -62,6 +62,12 @@ class World(level.Level):
             for chunk in region.values():
                 yield chunk
 
+    def get_chunk_at(self, pos):
+        if not isinstance(pos, u.Pos):
+            pos = u.Pos(*pos)
+        region = pos.to_region()
+        return self.regions[pos.to_region()].get_chunk(*pos.to_chunk())
+
     def get_player(self, name=None):
         """Get a named player (server) or the world default player"""
         # Single Player

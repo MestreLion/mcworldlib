@@ -14,12 +14,20 @@ from . import nbt
 
 
 class Player(nbt.Compound):
-    __slots__ = ('name')
+    __slots__ = ('name', 'world')
 
-    def __init__(self, *args, name=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = name or 'Player'
+        self.name = 'Player'
+        self.world = None
 
     @property
     def inventory(self):
         return self['Inventory']
+
+    def get_chunk(self):
+        """The chunk containing the player location"""
+        if not self.world:
+            return None
+
+        return self.world.get_chunk_at(self['Pos'])

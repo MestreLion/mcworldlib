@@ -37,5 +37,6 @@ class Level(nbt.File):
         playername = 'Player'
         self.player = player.Player(self.root[playername])
         self.player.name = playername
+        self.player.world = self
 
         return self
