@@ -27,6 +27,7 @@ import typing
 MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
 CHUNK_GRID = (32, 32)  # (x, z) chunks in each region file = 1024 chunks per region
 CHUNK_SIZE = (16, 16)  # (x, z) blocks in each chunk
+SECTION_HEIGHT = 16    # chunk section height in blocks
 
 
 class MCError(Exception):
@@ -46,6 +47,14 @@ class Pos(typing.NamedTuple):
     def as_xzy(self): return (self.x, self.z, self.y)
     def as_yxz(self): return (self.y, self.x, self.z)
     def as_xz (self): return (self.x, self.z)
+
+    def to_section_block(self):
+        return (self.y % SECTION_HEIGHT,
+                self.z % CHUNK_SIZE[1],
+                self.x % CHUNK_SIZE[0])
+
+    def to_section(self):
+        return self.y // SECTION_HEIGHT
 
     def to_chunk(self):
         return (self.x // CHUNK_SIZE[0],
