@@ -100,3 +100,18 @@ class Chunk(nbt.Root):
             )
         ).view(dtype=">q")[::-1]
         return indexes
+
+    def _encode_blockstates(self, data: numpy.ndarray, palette) -> numpy.ndarray:
+        """WIP
+
+        Encode an long array (from BlockStates or Heightmaps)
+        :param array: A numpy array of the data to be encoded.
+        :return: Encoded array as numpy array
+        """
+        array = data.astype(">q")
+        bits_per_entry = max(int(numpy.amax(array)).bit_length(), 2)
+        return numpy.packbits(
+            numpy.unpackbits(numpy.ascontiguousarray(array[::-1]).view("uint8")).reshape(
+                -1, 64
+            )[:, -bits_per_entry:]
+        ).view(dtype=">q")[::-1]
