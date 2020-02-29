@@ -49,6 +49,35 @@ class RegionError(u.MCError): pass
 class ChunkError(u.MCError): pass
 
 
+class Regions(collections.abc.MutableMapping):
+    """Collection of RegionFiles with lazy loading on access"""
+    __slots__ = (
+        '_regions',
+    )
+    def __init__(self, **regions):
+        self._regions = regions
+
+    def __getitem__(self, key):
+        region = self._regions[key]
+        if isinstance(region, RegionFile):
+            return region
+        self._regions[key] = RegionFile.load(region)
+        return self._regions[key]
+
+    # ABC boilerplate
+    def __iter__(self): return iter(self._regions)  # for key in self._regions: yield key
+    def __len__(self): return len(self._regions)
+    def __setitem__(self, key, value): self._regions[key] = value
+    def __delitem__(self, key): del self._regions[key]
+    def __contains__(self, key): return key in self._regions  # optional
+
+    def __str__(self):
+        return str(self._regions)
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}({len(self)} regions)>'
+
+
 class RegionFile(collections.abc.MutableMapping):
     """Collection of Chunks in Region file in Anvil (.mca) file format.
 

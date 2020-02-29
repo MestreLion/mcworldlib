@@ -36,7 +36,7 @@ class World(level.Level):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.path = ""
-        self.regions = {}
+        self.regions = region.Regions()
 
     @property
     def name(self):
@@ -114,7 +114,7 @@ class World(level.Level):
                 raise WorldNotFoundError(f"World not found: {path}")
 
         # /region
-        self.regions = {}
+        self.regions = region.Regions()
         regiondir = os.path.join(self.path, 'region')  # Overworld
         regions = os.listdir(regiondir)
         if progress:
@@ -126,9 +126,7 @@ class World(level.Level):
         for filename in regions:
             path = os.path.join(regiondir, filename)
             pos = region.RegionFile.pos_from_filename(path)
-            if not pos:
-                continue
-            self.regions[pos] = region.RegionFile.load(path)
+            self.regions[pos] = path
 
         # ...
 
