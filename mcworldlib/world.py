@@ -13,6 +13,7 @@ __all__ = ['load', 'World']
 
 
 import os.path
+import logging
 
 import tqdm
 
@@ -20,6 +21,9 @@ from . import level
 from . import nbt
 from . import region
 from . import util as u
+
+
+log = logging.getLogger(__name__)
 
 
 class WorldNotFoundError(u.MCError, IOError): pass
@@ -30,13 +34,15 @@ class World(level.Level):
 
     __slots__ = (
         'path',
+        'dimensions',
         'regions',
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.path = ""
-        self.regions = region.Regions()
+        self.dimensions = {_: region.Regions() for _ in u.Dimension}
+        self.regions = self.dimensions[u.Dimension.OVERWORLD]  # shortcut
 
     @property
     def name(self):
@@ -54,23 +60,23 @@ class World(level.Level):
     def chunk_count(self):
         return sum(len(_) for _ in self.regions)
 
-    def get_chunks(self, progress=True):
-        regions = self.regions.values()
+    def get_chunks(self, progress=True, dimension=u.Dimension.OVERWORLD):
+        regions = self.dimensions[dimension].values()
         if progress:
             regions = tqdm.tqdm(regions)
         for region in regions:
             for chunk in region.values():
                 yield chunk
 
-    def get_chunk_at(self, pos):
+    def get_chunk_at(self, pos, dimension=u.Dimension.OVERWORLD):
         if not isinstance(pos, u.Pos):
             pos = u.Pos(*pos)
-        return self.regions[pos.to_region()].get_chunk(*pos.to_chunk())
+        return self.dimensions[dimension][pos.to_region()].get_chunk(*pos.to_chunk())
 
-    def get_block_at(self, pos):
+    def get_block_at(self, pos, dimension=u.Dimension.OVERWORLD):
         if not isinstance(pos, u.Pos):
             pos = u.Pos(*pos)
-        chunk = self.get_chunk_at(pos)
+        chunk = self.get_chunk_at(pos, dimension)
         palette, indexes = chunk.get_section_blocks(pos.to_section())
         if not palette:
             return None
@@ -113,20 +119,15 @@ class World(level.Level):
                 self = cls()  # blank world
                 raise WorldNotFoundError(f"World not found: {path}")
 
-        # /region
-        self.regions = region.Regions()
-        regiondir = os.path.join(self.path, 'region')  # Overworld
-        regions = os.listdir(regiondir)
-        if progress:
-            regions = tqdm.tqdm(
-                regions,
-                desc = f"Loading World '{self.name}'",
-                unit = " Region",
-            )
-        for filename in regions:
-            path = os.path.join(regiondir, filename)
-            pos = region.RegionFile.pos_from_filename(path)
-            self.regions[pos] = path
+        # Region files
+        # /region, /DIM-1/region, /DIM1/region
+        log.info("Loading World '%s': %s", self.name, self.path)
+        for dim in u.Dimension:
+            folder = os.path.join(self.path, f'DIM{dim.value}' if dim.value else '', 'region')
+            for filename in os.listdir(folder):
+                path = os.path.join(folder, filename)
+                pos = region.RegionFile.pos_from_filename(path)
+                self.dimensions[dim][pos] = path
 
         # ...
 

@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 
+import enum
 import os.path
 import pprint
 import time
@@ -36,6 +37,12 @@ class MCError(Exception):
     All custom exceptions must be a subclass of this.
     """
     pass
+
+
+class Dimension(enum.Enum):
+    OVERWORLD =  0
+    NETHER    = -1
+    END       =  1
 
 
 class Pos(typing.NamedTuple):

@@ -15,6 +15,7 @@ __all__ = ['RegionFile']  # Not worth exporting RegionChunk yet
 import collections.abc
 import gzip
 import io
+import logging
 import os.path
 import re
 import struct
@@ -43,6 +44,8 @@ COMPRESSION_TYPES = (
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
 )
+
+log = logging.getLogger(__name__)
 
 
 class RegionError(u.MCError): pass
@@ -121,6 +124,7 @@ class RegionFile(collections.abc.MutableMapping):
         self.filename = getattr(buff, 'name', None)
         self.pos = self.pos_from_filename(self.filename)
 
+        log.debug("Loading Region %s: %s", self.pos, self.filename)
         count = self._max_chunks()
         header = struct.Struct(CHUNK_HEADER_FMT)  # pre-compile here, outside chunk loop
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)

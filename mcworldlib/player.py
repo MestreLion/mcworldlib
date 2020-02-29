@@ -11,6 +11,7 @@ Exported items:
 __all__ = ['Player']
 
 from . import nbt
+from . import util as u
 
 
 class Player(nbt.Compound):
@@ -30,4 +31,4 @@ class Player(nbt.Compound):
         if not self.world:
             return None
 
-        return self.world.get_chunk_at(self['Pos'])
+        return self.world.get_chunk_at(self['Pos'], u.Dimension(self['Dimension']))
