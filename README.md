@@ -3,8 +3,8 @@ Yet another library to manipulate Minecraft data, inspired by pymclevel
 
 ```pycon
 >>> import mcworldlib as mc
->>> world = mc.load('New World')
->>> mc.pretty(world)
+>>> world = mc.load('New World')  # You can load Worlds by level.dat path, save folder or World name.
+>>> mc.pretty(world)  # All MC classes have a pretty formatting. In most cases its NBT data.
 {
     "": {
         Data: {
@@ -28,7 +28,7 @@ Yet another library to manipulate Minecraft data, inspired by pymclevel
             GameType: 0,
             MapFeatures: 1b,
 ...
->>> mc.pretty(world.regions)
+>>> mc.pretty(world.regions)  # World Regions are a dictionary of region coordinates and its Region objects
 {   (-2, -3): <RegionFile(r.-2.-3.mca: 242 chunks)>,
     (-2, -2): <RegionFile(r.-2.-2.mca: 443 chunks)>,
     (-2, -1): <RegionFile(r.-2.-1.mca: 416 chunks)>,
@@ -46,7 +46,7 @@ Yet another library to manipulate Minecraft data, inspired by pymclevel
     (1, 0): <RegionFile(r.1.0.mca: 3 chunks)>}
 
 >>> region = world.regions[1,0]
->>> mc.pretty(region)
+>>> mc.pretty(region)  # A Region is a dictionary of chunks
 {
     (0, 0): <Chunk [0, 0] in world at (32, 0) saved on 2019-12-11 08:39:51>,
     (1, 0): <Chunk [1, 0] in world at (33, 0) saved on 2019-12-11 08:39:44>,
@@ -67,6 +67,20 @@ Yet another library to manipulate Minecraft data, inspired by pymclevel
             TileEntities: [],
             Entities: [],
 ...
+
+>>> for chunk in (                          # You can also fetch a chunk by several ways:
+...     world.get_chunk_at((120, 63, 42)),  # - The chunk containing an absolute (X, Y, Z) coordinate
+...     world.player.get_chunk(),           # - The chunk the player is in
+... ):
+...     print(chunk)
+...
+<Chunk [7, 2] in world at (7, 2) saved on 2019-12-16 05:11:22>
+<Chunk [8, 31] in world at (8, -1) saved on 2019-12-16 05:11:22>
+>>>
+
+>>> block = world.get_block_at((100, 63, 100))  # You can read the block info at a (X, Y, Z) coordinate
+>>> print(block)
+{Name: "minecraft:diamond_block"}
 ```
 
 Another not so noble usage example:
