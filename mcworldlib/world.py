@@ -124,6 +124,8 @@ class World(level.Level):
         log.info("Loading World '%s': %s", self.name, self.path)
         for dim in u.Dimension:
             folder = os.path.join(self.path, f'DIM{dim.value}' if dim.value else '', 'region')
+            if not os.path.isdir(folder):
+                continue
             for filename in os.listdir(folder):
                 path = os.path.join(folder, filename)
                 pos = region.RegionFile.pos_from_filename(path)
