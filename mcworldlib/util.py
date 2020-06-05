@@ -20,12 +20,20 @@ __all__ = [
 
 import enum
 import os.path
+import platform
 import pprint
 import time
 import typing
 
 
-MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
+# platform-dependent minecraft directory paths
+system = platform.system()
+if system == 'Windows':
+    saves_path = '~/AppData/Roaming/.minecraft/saves'
+else:
+    saves_path = '~/.minecraft/saves'
+
+MINECRAFT_SAVES_DIR = os.path.expanduser(saves_path)
 CHUNK_GRID = (32, 32)  # (x, z) chunks in each region file = 1024 chunks per region
 CHUNK_SIZE = (16, 16)  # (x, z) blocks in each chunk
 SECTION_HEIGHT = 16    # chunk section height in blocks
