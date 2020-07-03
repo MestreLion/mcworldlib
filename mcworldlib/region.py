@@ -145,7 +145,7 @@ class RegionFile(collections.abc.MutableMapping):
             # Warn when sector_count does not match expected as declared in the region header.
             # Sometimes Minecraft saves sector_count + 1 when chunk length
             # (including header) is an exact multiple of SECTOR_BYTES
-            if chunk.sector_count > sector_count > chunk.sector_count + 1:
+            if (chunk.sector_count != sector_count) and (chunk.sector_count + 1 != sector_count):
                 log.warning(
                     f'Length mismatch for region {self.pos} in chunk {pos}:'
                     f' region header declares {sector_count} {SECTOR_BYTES}-byte sectors,'
