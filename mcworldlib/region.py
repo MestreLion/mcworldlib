@@ -15,7 +15,6 @@ __all__ = ['RegionFile']  # Not worth exporting RegionChunk yet
 import collections.abc
 import gzip
 import io
-import logging
 import os.path
 import re
 import struct
@@ -25,6 +24,8 @@ import numpy
 
 from . import chunk
 from . import util as u
+
+from .logger import log
 
 
 # https://minecraft.gamepedia.com/Region_file_format
@@ -44,8 +45,6 @@ COMPRESSION_TYPES = (
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
 )
-
-log = logging.getLogger(__name__)
 
 
 class RegionError(u.MCError): pass
@@ -139,18 +138,19 @@ class RegionFile(collections.abc.MutableMapping):
             buff.seek(offset)
             chunk = RegionChunk.parse(buff, header=header)
 
-            # TODO: Replace asserts with proper Exceptions and/or logging
+            # timestamp should be after ~2001-09-09 GMT
+            if timestamp < 1000000000:
+                log.warning(f'Invalid timestamp for chunk {pos}: {timestamp} ({u.isodate(timestamp)})')
 
-            # ~2001-09-09 GMT
-            assert timestamp  > 1000000000, \
-                f'Invalid timestamp for chunk {pos}: {timestamp} ({u.isodate(timestamp)})'
-
+            # Warn when sector_count does not match expected as declared in the region header.
             # Sometimes Minecraft saves sector_count + 1 when chunk length
             # (including header) is an exact multiple of SECTOR_BYTES
-            assert chunk.sector_count <= sector_count <= chunk.sector_count + 1, \
-                f'Length mismatch for region {self.pos} in chunk {pos}:' \
-                f' region header declares {sector_count} {SECTOR_BYTES}-byte sectors,' \
-                f' but chunk data required {chunk.sector_count}.'
+            if chunk.sector_count > sector_count > chunk.sector_count + 1:
+                log.warning(
+                    f'Length mismatch for region {self.pos} in chunk {pos}:'
+                    f' region header declares {sector_count} {SECTOR_BYTES}-byte sectors,'
+                    f' but chunk data required {chunk.sector_count}.'
+                )
 
             chunk.region = self
             chunk.pos = pos
