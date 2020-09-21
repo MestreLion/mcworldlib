@@ -15,6 +15,7 @@ __all__ = ['RegionFile']  # Not worth exporting RegionChunk yet
 import collections.abc
 import gzip
 import io
+import logging
 import os.path
 import re
 import struct
@@ -24,8 +25,6 @@ import numpy
 
 from . import chunk
 from . import util as u
-
-from .logger import log
 
 
 # https://minecraft.gamepedia.com/Region_file_format
@@ -45,6 +44,8 @@ COMPRESSION_TYPES = (
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
 )
+
+log = logging.getLogger(__name__)
 
 
 class RegionError(u.MCError): pass

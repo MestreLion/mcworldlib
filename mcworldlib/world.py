@@ -12,6 +12,7 @@ Exported items:
 __all__ = ['load', 'World']
 
 
+import logging
 import os.path
 
 import tqdm
@@ -21,7 +22,7 @@ from . import nbt
 from . import region
 from . import util as u
 
-from .logger import log
+log = logging.getLogger(__name__)
 
 
 class WorldNotFoundError(u.MCError, IOError): pass

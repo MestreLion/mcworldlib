@@ -17,7 +17,7 @@ __all__ = [
 import argparse
 import logging
 
-from .logger import log
+log = logging.getLogger(__name__)
 
 
 def basic_parser(description=None,
