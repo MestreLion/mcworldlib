@@ -12,8 +12,8 @@ Exported items:
 __all__ = ['load', 'World']
 
 
-import os.path
 import logging
+import os.path
 
 import tqdm
 
@@ -21,7 +21,6 @@ from . import level
 from . import nbt
 from . import region
 from . import util as u
-
 
 log = logging.getLogger(__name__)
 

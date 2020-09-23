@@ -17,7 +17,6 @@ __all__ = [
 import argparse
 import logging
 
-
 log = logging.getLogger(__name__)
 
 
