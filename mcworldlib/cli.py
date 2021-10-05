@@ -29,23 +29,23 @@ def basic_parser(description=None,
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--quiet', '-q', dest='loglevel',
-                        const=logging.WARNING, default=logging.INFO,
-                        action="store_const",
-                        help="Suppress informative messages.")
+                       const=logging.WARNING, default=logging.INFO,
+                       action="store_const",
+                       help="Suppress informative messages.")
     group.add_argument('--verbose', '-v', dest='loglevel',
-                        const=logging.DEBUG,
-                        action="store_const",
-                        help="Verbose mode, output extra info.")
+                       const=logging.DEBUG,
+                       action="store_const",
+                       help="Verbose mode, output extra info.")
 
     parser.add_argument('--world', '-w', default=default_world,
                         help="Minecraft world, either its 'level.dat' file"
-                            " or a name under '~/.minecraft/saves' folder."
-                            " [Default: '%(default)s']")
+                             " or a name under '~/.minecraft/saves' folder."
+                             " [Default: '%(default)s']")
 
     if player:
         parser.add_argument('--player', '-p', default=default_player,
                             help="Player name."
-                                " [Default: '%(default)s']")
+                                 " [Default: '%(default)s']")
 
     parser.add_argument('--save', '-S',
                         default=False, action="store_true",
@@ -60,4 +60,4 @@ def save_world(world, save=False):
         log.info("Applying changes and saving world...")
         world.save()
     else:
-        log.warn("Not saving world, use --save to apply changes")
+        log.warning("Not saving world, use --save to apply changes")
