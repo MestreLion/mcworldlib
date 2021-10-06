@@ -110,7 +110,7 @@ class World(level.Level):
             self.path = path
         else:
             # Last chance: try path as name of a minecraft save dir
-            path = os.path.join(u.MINECRAFT_SAVES_DIR, path)
+            path = os.path.expanduser(os.path.join(u.MINECRAFT_SAVES_DIR, path))
             if os.path.isdir(path):
                 self = super().load(os.path.join(path, 'level.dat'))
                 self.path = path

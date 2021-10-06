@@ -29,9 +29,9 @@ import typing
 
 # platform-dependent minecraft directory paths
 if platform.system() == 'Windows':
-    MINECRAFT_SAVES_DIR = '~/AppData/Roaming/.minecraft/saves'
+    MINECRAFT_SAVES_DIR = os.path.expanduser('~/AppData/Roaming/.minecraft/saves')
 else:
-    MINECRAFT_SAVES_DIR = '~/.minecraft/saves'
+    MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
 
 CHUNK_GRID = (32, 32)  # (x, z) chunks in each region file = 1024 chunks per region
 CHUNK_SIZE = (16, 16)  # (x, z) blocks in each chunk
