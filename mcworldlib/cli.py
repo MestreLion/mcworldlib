@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 def basic_parser(description=None,
                  player=True,
+                 save=True,
                  default_world="New World",
                  default_player="Player",
                  **kw_argparser):
@@ -47,9 +48,10 @@ def basic_parser(description=None,
                             help="Player name."
                                  " [Default: '%(default)s']")
 
-    parser.add_argument('--save', '-S',
-                        default=False, action="store_true",
-                        help="Apply changes and save the world.")
+    if save:
+        parser.add_argument('--save', '-S',
+                            default=False, action="store_true",
+                            help="Apply changes and save the world.")
 
     return parser
 
