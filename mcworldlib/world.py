@@ -60,12 +60,22 @@ class World(level.Level):
         return sum(len(_) for _ in self.regions)
 
     def get_chunks(self, progress=True, dimension=u.Dimension.OVERWORLD):
+        """Yield all chunks in a given dimension, Overworld by default"""
         regions = self.dimensions[dimension].values()
         if progress:
             regions = tqdm.tqdm(regions)
         for region in regions:
             for chunk in region.values():
                 yield chunk
+
+    def get_all_chunks(self, progress=True):
+        """Yield a (dimension, chunk) tuple for all chunks in all dimensions"""
+        dimensions = self.dimensions.keys()
+        if progress:
+            dimensions = tqdm.tqdm(dimensions)
+        for dimension in dimensions:
+            for chunk in self.get_chunks(progress=progress, dimension=dimension):
+                yield dimension, chunk
 
     def get_chunk_at(self, pos, dimension=u.Dimension.OVERWORLD):
         if not isinstance(pos, u.Pos):
@@ -115,7 +125,7 @@ class World(level.Level):
                 self = super().load(os.path.join(path, 'level.dat'))
                 self.path = path
             else:
-                self = cls()  # blank world
+                # self = cls()  # blank world
                 raise WorldNotFoundError(f"World not found: {path}")
 
         # Region files

@@ -18,7 +18,7 @@ __all__ = [
     'pretty',
 ]
 
-
+import collections.abc
 import enum
 import os.path
 import platform
@@ -52,6 +52,7 @@ class Dimension(enum.Enum):
     END       =  1
 
 
+# noinspection PyRedundantParentheses
 class Pos(typing.NamedTuple):
     x: int
     y: int
@@ -60,7 +61,7 @@ class Pos(typing.NamedTuple):
     # Maybe should return Pos instances instead of regular tuples?
     def as_xzy(self): return (self.x, self.z, self.y)
     def as_yxz(self): return (self.y, self.x, self.z)
-    def as_xz (self): return (self.x, self.z)
+    def as_xz(self):  return (self.x, self.z)
 
     def to_section_block(self):
         return (self.y % SECTION_HEIGHT,
@@ -89,12 +90,13 @@ class Pos(typing.NamedTuple):
         return str(self.to_int())
 
 
-#TODO: Use it everywhere!
+# TODO: Use it everywhere!
+# noinspection PyRedundantParentheses
 class PosXZ(typing.NamedTuple):
     x: int
     z: int
 
-    def as_zx (self): return (self.z, self.x)
+    def as_zx(self):  return (self.z, self.x)
 
     def to_int(self): return (int(self.x), int(self.z))
 
@@ -106,8 +108,8 @@ class PosXZ(typing.NamedTuple):
         return str(self.to_int())
 
 
-def isodate(secs:int) -> str:
-    """Return a formated date string in local time from a timestamp
+def isodate(secs: int) -> str:
+    """Return a formatted date string in local time from a timestamp
 
     Example: isodate(1234567890) -> '2009-02-13 21:31:30'
     """

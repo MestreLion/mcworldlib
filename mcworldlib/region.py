@@ -30,7 +30,7 @@ from . import util as u
 # https://minecraft.gamepedia.com/Region_file_format
 CHUNK_LOCATION_BYTES = 4  # Chunk offset and sector count. Must be power of 2
 CHUNK_TIMESTAMP_BYTES = 4  # Unix timestamp, seconds after epoch.
-CHUNK_SECTOR_COUNT_BYTES = 1  # Assumed to be the least significants from CHUNK_LOCATION_BYTES
+CHUNK_SECTOR_COUNT_BYTES = 1  # Assumed to be the least significant from CHUNK_LOCATION_BYTES
 CHUNK_COMPRESSION_BYTES = 1  # Must match last element in CHUNK_HEADER_FMT
 CHUNK_HEADER_FMT = '>IB'  # Struct format. Chunk length (4 bytes) and compression type (1 byte)
 SECTOR_BYTES = 4096  # Could possibly be derived from CHUNK_GRID and CHUNK_*_BYTES
@@ -40,7 +40,7 @@ COMPRESSION_NONE = 0  # Not in spec
 COMPRESSION_GZIP = 1  # GZip (RFC1952) (unused in practice)
 COMPRESSION_ZLIB = 2  # Zlib (RFC1950)
 COMPRESSION_TYPES = (
-#   COMPRESSION_NONE,
+    # COMPRESSION_NONE is intentionally not in this list
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
 )
@@ -104,9 +104,10 @@ class RegionFile(collections.abc.MutableMapping):
     def chunks(self):
         """Convenience to handle chunks as sequence instead of mapping"""
         return self.values()
+
     @chunks.setter
     def chunks(self, chunks):
-        self._chunks = {chunk.pos: chunk for chunk in chunks}
+        self._chunks = {c.pos: c for c in chunks}
 
     @classmethod
     def load(cls, filename):
@@ -177,14 +178,15 @@ class RegionFile(collections.abc.MutableMapping):
         if not self:  # no chunks
             return 0
 
-        #TODO: be smart and do not overwrite the whole file
-        #      Use chunk.dirty and a good (re-)allocation algorithm
+        # TODO: be smart and do not overwrite the whole file
+        #       Use chunk.dirty and a good (re-)allocation algorithm
         count = self._max_chunks()
         locations  = numpy.zeros(count, dtype=f'>u{CHUNK_LOCATION_BYTES}')
         timestamps = numpy.zeros(count, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}')
 
         offset = locations.nbytes + timestamps.nbytes  # initial, in bytes
         written = 0
+        length = 0
         for pos, chunk in self.items():
             buff.seek(offset)
 
@@ -193,7 +195,7 @@ class RegionFile(collections.abc.MutableMapping):
 
             index = self._index_from_position(pos)
             location = self._pack_location(offset, length)
-            locations[ index] = location
+            locations[index] = location
             timestamps[index] = chunk.timestamp
 
             offset += num_sectors(length) * SECTOR_BYTES
@@ -205,7 +207,7 @@ class RegionFile(collections.abc.MutableMapping):
             written += buff.write(b'\x00' * pad)
 
         buff.seek(0)
-        written += buff.write( locations.tobytes())
+        written += buff.write(locations.tobytes())
         written += buff.write(timestamps.tobytes())
         return written
 
@@ -267,7 +269,7 @@ class RegionFile(collections.abc.MutableMapping):
 
     # ABC boilerplate
     def __getitem__(self, key): return self._chunks[key]
-    def __iter__(self): return iter(self._chunks)  # for key in self._ckunks: yield key
+    def __iter__(self): return iter(self._chunks)  # for key in self._chunks: yield key
     def __len__(self): return len(self._chunks)
     def __setitem__(self, key, value): self._chunks[key] = value
     def __delitem__(self, key): del self._chunks[key]
@@ -314,18 +316,19 @@ class RegionChunk(chunk.Chunk):
         'dirty',
     )
     compress = {
-        COMPRESSION_NONE: lambda _:_,
+        COMPRESSION_NONE: lambda _: _,
         COMPRESSION_GZIP: gzip.compress,
         COMPRESSION_ZLIB: zlib.compress,
     }
     decompress = {
-        COMPRESSION_NONE: lambda _:_,
+        COMPRESSION_NONE: lambda _: _,
         COMPRESSION_GZIP: gzip.decompress,
         COMPRESSION_ZLIB: zlib.decompress,
     }
 
     def __init__(self, *args, **tags):
         super().__init__(*args, **tags)
+        # noinspection PyTypeChecker
         self.region:        RegionFile  = None
         self.pos:           tuple       = ()  # (x, z)
         self.offset:        int         = 0
@@ -340,11 +343,12 @@ class RegionChunk(chunk.Chunk):
                 int(self.root['zPos']))
 
     @classmethod
-    def parse(cls,
-        buff,  # bytes or file-like buffer
-        *args,
-        header: struct.Struct = None,
-        **kwargs
+    def parse(
+            cls,
+            buff,  # bytes or file-like buffer
+            *args,
+            header: struct.Struct = None,
+            **kwargs
     ):
         # header as optional argument is just a performance improvement that allows
         # Struct format to be pre-compiled by caller, outside the loop
@@ -397,7 +401,7 @@ def num_sectors(size):
     # Faster than math.ceil(size / SECTOR_BYTES)
     # Not a RegionFile static method so its other static methods can call this
     sectors = (size // SECTOR_BYTES)
-    if (size % SECTOR_BYTES):
+    if size % SECTOR_BYTES:
         sectors += 1
     return sectors
 
