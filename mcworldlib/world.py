@@ -17,9 +17,9 @@ import os.path
 
 import tqdm
 
+from . import anvil
 from . import level
 from . import nbt
-from . import region
 from . import util as u
 
 log = logging.getLogger(__name__)

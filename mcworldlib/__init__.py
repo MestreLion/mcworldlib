@@ -17,11 +17,11 @@
 
 """Yet another python library to manipulate Minecraft save data"""
 
+from .anvil  import *
 from .chunk  import *
 from .cli    import *
 from .level  import *
 from .nbt    import *
-from .region import *
 from .world  import *
 from .util   import *
 
