@@ -99,7 +99,6 @@ class AnvilFile(collections.abc.MutableMapping):
 
         log.debug("Loading Region: %s", self.filename)
         count = self._max_chunks()
-        header = struct.Struct(CHUNK_HEADER_FMT)  # pre-compile here, outside chunk loop
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)
         timestamps = numpy.fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=count)
         for index, (location, timestamp) in enumerate(zip(locations, timestamps)):
@@ -112,7 +111,7 @@ class AnvilFile(collections.abc.MutableMapping):
 
             buff.seek(offset)
             try:
-                chunk = RegionChunk.parse(buff, header=header)
+                chunk = RegionChunk.parse(buff)
             except ChunkError as e:
                 log.error(f"Could not parse {chunk_msg[0]}: %s", *chunk_msg[1:], e)
                 continue
@@ -382,22 +381,15 @@ class RegionChunk(chunk.Chunk):
                 int(self.root['zPos']))
 
     @classmethod
-    def parse(
-            cls,
-            buff,  # bytes or file-like buffer
-            *args,
-            header: struct.Struct = None,
-            **kwargs
-    ):
-        # header as optional argument is just a performance improvement that allows
-        # Struct format to be pre-compiled by caller, outside the loop
-        if header is None:
-            header = struct.Struct(CHUNK_HEADER_FMT)
-
+    def parse(cls, buff, *args, **kwargs):
+        """
+        https://minecraft.fandom.com/wiki/Region_file_format#Chunk_data
+        https://www.reddit.com/r/technicalminecraft/comments/e4wxb6/
+        """
         if not hasattr(buff, 'read'):  # assume bytes data
             buff = io.BytesIO(buff)
 
-        length, compression = header.unpack(buff.read(header.size))
+        length, compression = CHUNK_HEADER.unpack(buff.read(CHUNK_HEADER.size))
         length -= CHUNK_COMPRESSION_BYTES  # already read
 
         external, compression = cls._unpack_compression(compression)
@@ -412,7 +404,7 @@ class RegionChunk(chunk.Chunk):
         data = cls.decompress[compression](buff.read(length))
         self = super().parse(io.BytesIO(data), *args, **kwargs)
 
-        self.sector_count = num_sectors(length + header.size)
+        self.sector_count = num_sectors(length + CHUNK_HEADER.size)
         self.compression = compression
         self.external = external
 
