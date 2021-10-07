@@ -27,6 +27,7 @@ from . import chunk
 from . import util as u
 
 
+# Constants
 # https://minecraft.gamepedia.com/Region_file_format
 CHUNK_LOCATION_BYTES = 4  # Chunk offset and sector count. Must be power of 2
 CHUNK_TIMESTAMP_BYTES = 4  # Unix timestamp, seconds after epoch.
@@ -34,6 +35,10 @@ CHUNK_SECTOR_COUNT_BYTES = 1  # Assumed to be the least significant from CHUNK_L
 CHUNK_COMPRESSION_BYTES = 1  # Must match last element in CHUNK_HEADER_FMT
 CHUNK_HEADER_FMT = '>IB'  # Struct format. Chunk length (4 bytes) and compression type (1 byte)
 SECTOR_BYTES = 4096  # Could possibly be derived from CHUNK_GRID and CHUNK_*_BYTES
+# Derived
+CHUNK_COMPRESSION_BITS = 8 * CHUNK_COMPRESSION_BYTES - 1  # = 7
+CHUNK_COMPRESSION_MASK = 2**CHUNK_COMPRESSION_BITS - 1    # 0b01111111 = 127
+CHUNK_HEADER = struct.Struct(CHUNK_HEADER_FMT)
 
 # Could be an Enum, but not worth it
 COMPRESSION_NONE = 0  # Not in spec
@@ -103,22 +108,28 @@ class AnvilFile(collections.abc.MutableMapping):
 
             pos = self._position_from_index(index)  # (x, z)
             offset, sector_count = self._unpack_location(location)
+            chunk_msg = ("chunk %s at offset %s in %r", pos, offset, self.filename)
 
             buff.seek(offset)
-            chunk = RegionChunk.parse(buff, header=header)
+            try:
+                chunk = RegionChunk.parse(buff, header=header)
+            except ChunkError as e:
+                log.error(f"Could not parse {chunk_msg[0]}: %s", *chunk_msg[1:], e)
+                continue
 
             # timestamp should be after ~2001-09-09 GMT
             if timestamp < 1000000000:
-                log.warning(f'Invalid timestamp for chunk {pos}: {timestamp} ({u.isodate(timestamp)})')
+                log.warning(f"Invalid timestamp for {chunk_msg[0]}: %s (%s)",
+                            *chunk_msg[1:], timestamp, u.isodate(timestamp))
 
             # Warn when sector_count does not match expected as declared in the region header.
             # Sometimes Minecraft saves sector_count + 1 when chunk length
             # (including header) is an exact multiple of SECTOR_BYTES
-            if sector_count not in {chunk.sector_count, chunk.sector_count + 1}:
+            if sector_count not in (chunk.sector_count, chunk.sector_count + 1):
                 log.warning(
-                    f'Length mismatch in chunk {pos} for region {self.filename}:'
-                    f' region header declares {sector_count} {SECTOR_BYTES}-byte sectors,'
-                    f' but chunk data required {chunk.sector_count}.'
+                    f"Length mismatch in {chunk_msg[0]}: region header declares"
+                    " %s %s-byte sectors, but chunk data required %s.",
+                    *chunk_msg[1:], sector_count, SECTOR_BYTES, chunk.sector_count
                 )
 
             chunk.region = self
@@ -187,7 +198,8 @@ class AnvilFile(collections.abc.MutableMapping):
         if not m:
             return None
 
-        return (int(m.group('rx')), int(m.group('rz')))
+        return (int(m.group('rx')),
+                int(m.group('rz')))
 
     @staticmethod
     def _unpack_location(location):
@@ -264,6 +276,7 @@ class RegionFile(AnvilFile):
         super().__init__(**kw)
         # noinspection PyTypeChecker
         self.regions: Regions = None
+        self.pos:     tuple   = ()
 
     @property
     def world(self):
@@ -284,7 +297,7 @@ class RegionFile(AnvilFile):
                 cz - self.pos[1] * u.CHUNK_GRID[1])
         if not ((0, 0) <= cpos < u.CHUNK_GRID):
             raise RegionError(
-                f"Chunk at world ({cx}, {cz}) does not belong to this region {self.pos}."
+                f"Chunk at world ({cx}, {cz}) does not belong to region {self.pos}."
                 f" Try region ({cx//u.CHUNK_GRID[0]}, {cz//u.CHUNK_GRID[0]})."
             )
         return self[cpos]
@@ -323,11 +336,12 @@ class RegionChunk(chunk.Chunk):
     Being in a Region extends Chunk with several extra attributes:
     region       -- parent RegionFile which this Chunk belongs to
     pos          -- (x, z) relative position in Region, also its key in region mapping
-    offset       --
-    sector_count --
-    timestamp    --
-    compression  --
-    dirty        --
+    offset       -- Offset in bytes in region file. Currently unused
+    sector_count -- Chunk size, in data sectors (4096 bytes)
+    timestamp    -- Last saved, set only by Minecraft client
+    compression  -- Chunk data compression type. Currently only Zlib is used
+    external     -- If chunk data is in external (.mcc) file
+    dirty        -- If data was changed and needs saving. Currently unused
     """
     __slots__ = (
         'region',
@@ -336,6 +350,7 @@ class RegionChunk(chunk.Chunk):
         'sector_count',
         'timestamp',
         'compression',
+        'external',
         'dirty',
     )
     compress = {
@@ -354,10 +369,11 @@ class RegionChunk(chunk.Chunk):
         # noinspection PyTypeChecker
         self.region:        RegionFile  = None
         self.pos:           tuple       = ()  # (x, z)
-        self.offset:        int         = 0
+        self.offset:        int         = 0  # Set by AnvilFile.parse()
         self.sector_count:  int         = 0
-        self.timestamp:     int         = 0
+        self.timestamp:     int         = 0  # Also set by AnvilFile.parse()
         self.compression:   int         = COMPRESSION_NONE  # = 0
+        self.external:      bool        = False  # MCC files
         self.dirty:         bool        = True  # For now
 
     @property
@@ -384,15 +400,21 @@ class RegionChunk(chunk.Chunk):
         length, compression = header.unpack(buff.read(header.size))
         length -= CHUNK_COMPRESSION_BYTES  # already read
 
-        assert compression in COMPRESSION_TYPES, \
-            f'invalid compression type for chunk, must be one of' \
-            f' {COMPRESSION_TYPES}: {compression}'
+        external, compression = cls._unpack_compression(compression)
+
+        if compression not in COMPRESSION_TYPES:
+            raise ChunkError('Invalid compression type, must be one of'
+                             f' {COMPRESSION_TYPES}: {compression}')
+
+        if external:
+            raise ChunkError('External MCC data file is not yet supported')
 
         data = cls.decompress[compression](buff.read(length))
         self = super().parse(io.BytesIO(data), *args, **kwargs)
 
         self.sector_count = num_sectors(length + header.size)
         self.compression = compression
+        self.external = external
 
         return self
 
@@ -401,13 +423,27 @@ class RegionChunk(chunk.Chunk):
             super().write(b, *args, **kwargs)
             data = self.compress[self.compression](b.getbuffer())
         length = len(data)
-        header = struct.Struct(CHUNK_HEADER_FMT)
-        size  = buff.write(header.pack(length + CHUNK_COMPRESSION_BYTES, self.compression))
+        size  = buff.write(CHUNK_HEADER.pack(length + CHUNK_COMPRESSION_BYTES,
+                                             self._pack_compression(self.external,
+                                                                    self.compression)))
         size += buff.write(data)
         if update_timestamp:
             self.timestamp = u.now()
-        assert size == header.size + length
+        assert size == CHUNK_HEADER.size + length
         return size
+
+    @staticmethod
+    def _unpack_compression(compression):
+        """Helper to extract chunk external flag and compression type"""
+        # endless bitwise operations...
+        return (bool(compression >> CHUNK_COMPRESSION_BITS),
+                compression & CHUNK_COMPRESSION_MASK)
+
+    @staticmethod
+    def _pack_compression(external, compression):
+        """Helper to pack external flag and compression type"""
+        # Python stdlib really needs bit structs...
+        return (int(external) << CHUNK_COMPRESSION_BITS) | compression
 
     def __str__(self):
         """Just like NTBExplorer!"""
@@ -422,7 +458,7 @@ class RegionChunk(chunk.Chunk):
 def num_sectors(size):
     """Helper to calculate the number of sectors in size bytes"""
     # Faster than math.ceil(size / SECTOR_BYTES)
-    # Not a RegionFile static method so its other static methods can call this
+    # Not a AnvilFile static method so its other static methods can call this
     sectors = (size // SECTOR_BYTES)
     if size % SECTOR_BYTES:
         sectors += 1
