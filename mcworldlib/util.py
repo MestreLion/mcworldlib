@@ -108,6 +108,44 @@ class PosXZ(typing.NamedTuple):
         return str(self.to_int())
 
 
+class LazyFileObjects(collections.abc.MutableMapping):
+    """Keyed collection of objects loaded from files lazily on access"""
+    __slots__ = (
+        '_items',
+        '_load_kwargs',
+    )
+    ItemClass = tuple
+    collective = 'items'
+
+    def __init__(self, items=None, **load_kwargs):
+        self._items = dict(items) if items is not None else {}
+        self._load_kwargs = load_kwargs
+
+    def _load_lazy_object(self, item, **kwargs):
+        raise NotImplementedError
+
+    def __getitem__(self, key):
+        item = self._items[key]
+        if isinstance(item, self.ItemClass):
+            return item
+        obj = self._load_lazy_object(item, **self._load_kwargs)
+        self._items[key] = obj
+        return obj
+
+    # ABC boilerplate
+    def __iter__(self): return iter(self._items)  # for key in self._items: yield key
+    def __len__(self): return len(self._items)
+    def __setitem__(self, key, value): self._items[key] = value
+    def __delitem__(self, key): del self._items[key]
+    def __contains__(self, key): return key in self._items  # optional
+
+    def __str__(self):
+        return str(self._items)
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}({len(self)} {self.collective})>'
+
+
 def isodate(secs: int) -> str:
     """Return a formatted date string in local time from a timestamp
 

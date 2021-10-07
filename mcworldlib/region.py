@@ -2,7 +2,7 @@
 # Copyright (C) 2019 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 # License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
 
-"""Region files and its chunks.
+"""Anvil (Region) MCA files and its chunks.
 
 Exported items:
     RegionChunk -- Chunk in a Region, inherits from chunk.Chunk
@@ -52,53 +52,21 @@ class RegionError(u.MCError): pass
 class ChunkError(u.MCError): pass
 
 
-class Regions(collections.abc.MutableMapping):
-    """Collection of RegionFiles with lazy loading on access"""
-    __slots__ = (
-        '_regions',
-    )
-    def __init__(self, **regions):
-        self._regions = regions
-
-    def __getitem__(self, key):
-        region = self._regions[key]
-        if isinstance(region, RegionFile):
-            return region
-        self._regions[key] = RegionFile.load(region)
-        return self._regions[key]
-
-    # ABC boilerplate
-    def __iter__(self): return iter(self._regions)  # for key in self._regions: yield key
-    def __len__(self): return len(self._regions)
-    def __setitem__(self, key, value): self._regions[key] = value
-    def __delitem__(self, key): del self._regions[key]
-    def __contains__(self, key): return key in self._regions  # optional
-
-    def __str__(self):
-        return str(self._regions)
-
-    def __repr__(self):
-        return f'<{self.__class__.__name__}({len(self)} regions)>'
-
-
-class RegionFile(collections.abc.MutableMapping):
-    """Collection of Chunks in Region file in Anvil (.mca) file format.
+class AnvilFile(collections.abc.MutableMapping):
+    """Collection of Chunks in Anvil (.mca) file format.
 
     Attributes:
         filename -- The name of the file
-        pos      -- Position (rx, rz) coordinates of Region in World
     """
     __slots__ = (
         '_chunks',
         'filename',
-        'pos',
     )
     _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
 
     def __init__(self, **chunks):
         self._chunks:   dict   = chunks
-        self.filename:  str    = None
-        self.pos:       tuple  = ()
+        self.filename:  str    = ""
 
     @property
     def chunks(self):
@@ -110,12 +78,12 @@ class RegionFile(collections.abc.MutableMapping):
         self._chunks = {c.pos: c for c in chunks}
 
     @classmethod
-    def load(cls, filename):
-        """Load region file from a path."""
+    def load(cls, filename) -> 'AnvilFile':
+        """Load anvil file from a path"""
         return cls.parse(open(filename, 'rb'))
 
     @classmethod
-    def parse(cls, buff):
+    def parse(cls, buff) -> 'AnvilFile':
         """Parse region from file-like object, build an instance and return it
 
         https://minecraft.gamepedia.com/Region_file_format
@@ -123,9 +91,8 @@ class RegionFile(collections.abc.MutableMapping):
         self = cls()
 
         self.filename = getattr(buff, 'name', None)
-        self.pos = self.pos_from_filename(self.filename)
 
-        log.debug("Loading Region %s: %s", self.pos, self.filename)
+        log.debug("Loading Region: %s", self.filename)
         count = self._max_chunks()
         header = struct.Struct(CHUNK_HEADER_FMT)  # pre-compile here, outside chunk loop
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)
@@ -149,7 +116,7 @@ class RegionFile(collections.abc.MutableMapping):
             # (including header) is an exact multiple of SECTOR_BYTES
             if sector_count not in {chunk.sector_count, chunk.sector_count + 1}:
                 log.warning(
-                    f'Length mismatch for region {self.pos} in chunk {pos}:'
+                    f'Length mismatch in chunk {pos} for region {self.filename}:'
                     f' region header declares {sector_count} {SECTOR_BYTES}-byte sectors,'
                     f' but chunk data required {chunk.sector_count}.'
                 )
@@ -210,22 +177,6 @@ class RegionFile(collections.abc.MutableMapping):
         written += buff.write(locations.tobytes())
         written += buff.write(timestamps.tobytes())
         return written
-
-    def get_chunk(self, cx, cz):
-        """Return the chunk at world chunk coordinate (cx, cz)
-
-        For local, region coordinates simply use region[x, z]
-        """
-        if not self.pos:
-            raise RegionError(f"Invalid region position coordinates: {self.pos!r}")
-        cpos = (cx - self.pos[0] * u.CHUNK_GRID[0],
-                cz - self.pos[1] * u.CHUNK_GRID[1])
-        if not ((0, 0) <= cpos < u.CHUNK_GRID):
-            raise RegionError(
-                f"Chunk at world ({cx}, {cz}) does not belong to this region {self.pos}."
-                f" Try region ({cx//u.CHUNK_GRID[0]}, {cz//u.CHUNK_GRID[0]})."
-            )
-        return self[cpos]
 
     @classmethod
     def pos_from_filename(cls, filename):
@@ -292,6 +243,78 @@ class RegionFile(collections.abc.MutableMapping):
         if self.filename:
             basename = f'{os.path.basename(self.filename)}: '
         return f'<{self.__class__.__name__}({basename}{len(self)} chunks)>'
+
+
+class RegionFile(AnvilFile):
+    """Collection of Chunks in a World Dimension.
+
+    Being in a World extends AnvilFile with extra attributes and properties:
+    regions   -- Collection this region belongs to, derives world and dimension
+    world     -- parent World that contains this region
+    dimension -- Dimension this region is located: Overworld, Nether, End
+    pos       -- (x, z) relative position in World, also its key in dimension mapping
+                 Ultimately derived from filename
+    """
+    __slots__ = (
+        'regions',
+        'pos',
+    )
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        # noinspection PyTypeChecker
+        self.regions: Regions = None
+
+    @property
+    def world(self):
+        return getattr(self.regions, 'world', None)
+
+    @property
+    def dimension(self):
+        return getattr(self.regions, 'dimension', None)
+
+    def get_chunk(self, cx, cz):
+        """Return the chunk at world chunk coordinate (cx, cz)
+
+        For local, region coordinates simply use region[x, z]
+        """
+        if not self.pos:
+            raise RegionError(f"Invalid region position coordinates: {self.pos!r}")
+        cpos = (cx - self.pos[0] * u.CHUNK_GRID[0],
+                cz - self.pos[1] * u.CHUNK_GRID[1])
+        if not ((0, 0) <= cpos < u.CHUNK_GRID):
+            raise RegionError(
+                f"Chunk at world ({cx}, {cz}) does not belong to this region {self.pos}."
+                f" Try region ({cx//u.CHUNK_GRID[0]}, {cz//u.CHUNK_GRID[0]})."
+            )
+        return self[cpos]
+
+    @classmethod
+    def load(cls, filename, position=()):
+        self = super().load(filename)
+        self.pos = position or self.pos_from_filename(self.filename)
+        return self
+
+
+class Regions(u.LazyFileObjects):
+    """Collection of RegionFiles"""
+    ItemClass = RegionFile
+    collective = 'regions'
+
+    __slots__ = (
+        'dimension',
+        'world',
+    )
+
+    def __init__(self, *args, **kw):
+        self.world     = kw.pop('world', None)
+        self.dimension = kw.pop('dimension', None)
+        super().__init__(*args, **kw)
+
+    def _load_lazy_object(self, region, **kw):
+        region = RegionFile.load(region, **kw)
+        region.regions = self
+        return region
 
 
 class RegionChunk(chunk.Chunk):

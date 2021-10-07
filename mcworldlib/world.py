@@ -40,12 +40,13 @@ class World(level.Level):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.path = ""
-        self.dimensions = {_: region.Regions() for _ in u.Dimension}
+        self.dimensions = {_: anvil.Regions(world=self, dimension=_) for _ in u.Dimension}
         self.regions = self.dimensions[u.Dimension.OVERWORLD]  # shortcut
 
     @property
     def name(self):
         return str(self.root.get('LevelName', os.path.basename(self.path)))
+
     @name.setter
     def name(self, value):
         self.root['LevelName'] = nbt.String(value)
@@ -137,7 +138,7 @@ class World(level.Level):
                 continue
             for filename in os.listdir(folder):
                 path = os.path.join(folder, filename)
-                pos = region.RegionFile.pos_from_filename(path)
+                pos = anvil.RegionFile.pos_from_filename(path)
                 self.dimensions[dim][pos] = path
 
         # ...
