@@ -81,16 +81,16 @@ class World(level.Level):
     def get_chunk_at(self, pos, dimension=u.Dimension.OVERWORLD):
         if not isinstance(pos, u.Pos):
             pos = u.Pos(*pos)
-        return self.dimensions[dimension][pos.to_region()].get_chunk(*pos.to_chunk())
+        return self.dimensions[dimension][pos.as_region][pos.as_region_chunk]
 
     def get_block_at(self, pos, dimension=u.Dimension.OVERWORLD):
         if not isinstance(pos, u.Pos):
             pos = u.Pos(*pos)
         chunk = self.get_chunk_at(pos, dimension)
-        palette, indexes = chunk.get_section_blocks(pos.to_section())
+        palette, indexes = chunk.get_section_blocks(pos.as_section)
         if not palette:
             return None
-        return palette[int(indexes[pos.to_section_block()])]
+        return palette[int(indexes[pos.as_section_block])]
 
     def get_player(self, name=None):
         """Get a named player (server) or the world default player"""

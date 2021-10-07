@@ -55,60 +55,115 @@ class Dimension(enum.Enum):
         return '' if self.name == 'OVERWORLD' else f'DIM{self.value}'
 
 
-# noinspection PyRedundantParentheses
 class Pos(typing.NamedTuple):
+    # Consider officially allowing floats? Otherwise .as_integers makes no sense
     x: int
     y: int
     z: int
 
-    # Maybe should return Pos instances instead of regular tuples?
-    def as_xzy(self): return (self.x, self.z, self.y)
-    def as_yxz(self): return (self.y, self.x, self.z)
-    def as_xz(self):  return (self.x, self.z)
+    # Rationale for properties, prefixes and return types (just a draft):
+    # If meant for explicit type conversion: method to_*()
+    # If just presenting the same position in other format/reference: property as_*
+    # If ready to be used elsewhere, with little point remaining Pos: -> tuple
 
-    def to_section_block(self):
-        return (self.y % SECTION_HEIGHT,
-                self.z % CHUNK_SIZE[1],
-                self.x % CHUNK_SIZE[0])
+    @property
+    def as_integers(self) -> 'Pos':
+        """Coordinates truncated to integers"""
+        return self.__class__(*map(int, self))
 
-    def to_section(self):
+    @property
+    def as_yzx(self) -> tuple: return self.y, self.x, self.z  # section block notation
+
+    @property
+    def as_xzy(self) -> tuple: return self.x, self.z, self.y  # height last
+
+    @property
+    def as_section_block(self) -> tuple:
+        ipos = self.as_integers  # Required by mod
+        return (ipos.y % SECTION_HEIGHT,
+                ipos.z % CHUNK_SIZE[1],
+                ipos.x % CHUNK_SIZE[0])
+
+    @property
+    def as_section(self) -> int:
         return self.y // SECTION_HEIGHT
 
-    def to_chunk(self):
-        return (self.x // CHUNK_SIZE[0],
-                self.z // CHUNK_SIZE[1])
+    @property
+    def as_chunk(self) -> 'PosXZ':
+        """(cx, cz) absolute coordinates of the chunk containing this position"""
+        return self.to_posxz().as_chunk
 
-    def to_region(self):
-        cx, cz = self.to_chunk()
-        return (cx // CHUNK_GRID[0],
-                cz // CHUNK_GRID[1])
+    @property
+    def as_region(self) -> 'PosXZ':
+        """(rx, rz) absolute coordinates of the region containing this position"""
+        return self.to_posxz().as_region
 
-    def to_int(self): return (int(self.x), int(self.y), int(self.z))
+    @property
+    def as_chunk_pos(self) -> 'PosXZ':
+        """(xc, zc) position coordinates relative to its chunk"""
+        return self.to_posxz().as_chunk_pos
+
+    @property
+    def as_region_chunk(self) -> 'PosXZ':
+        """(cxr, czr) chunk position coordinates relative to its region"""
+        return self.to_posxz().as_region_chunk
+
+    def to_posxz(self) -> 'PosXZ':
+        return PosXZ(self.x, self.z)
+    as_xz = property(to_posxz)
 
     @classmethod
-    def from_tag(cls, tag):
+    def from_tag(cls, tag):  # tag: nbt.Compound
         return cls(*tag['Pos'])
 
     def __str__(self):
-        return str(self.to_int())
+        return super().__str__(self.as_integers)
 
 
-# TODO: Use it everywhere!
-# noinspection PyRedundantParentheses
+# TODO: Use it more!
 class PosXZ(typing.NamedTuple):
     x: int
     z: int
 
-    def as_zx(self):  return (self.z, self.x)
+    @property
+    def as_integers(self) -> 'PosXZ':
+        """Coordinates truncated to integers"""
+        return self.__class__(*map(int, self))
 
-    def to_int(self): return (int(self.x), int(self.z))
+    @property
+    def as_chunk(self) -> 'PosXZ':
+        """(cx, cz) absolute coordinates of the chunk containing this position"""
+        return self.__class__(*(c // s for c, s in zip(self, CHUNK_SIZE)))
+        # or:  PosXZ(self.x // CHUNK_SIZE[0], self.z // CHUNK_SIZE[1])
+
+    @property
+    def as_region(self) -> 'PosXZ':
+        """(rx, rz) absolute coordinates of the region containing this position"""
+        return self.__class__(*(c // g for c, g in zip(self.as_chunk, CHUNK_GRID)))
+        # or:  PosXZ(*(c // (s * g) for c, s, g in zip(self, CHUNK_SIZE, CHUNK_GRID)))
+
+    @property
+    def as_chunk_pos(self) -> 'PosXZ':
+        """(xc, zc) position coordinates relative to its chunk"""
+        return self.__class__(*(c % s for c, s in zip(self.as_integers, CHUNK_SIZE)))
+        # or:  PosXZ(int(self.x) % CHUNK_SIZE[0], int(self.z) % CHUNK_SIZE[1])
+
+    @property
+    def as_region_chunk(self) -> 'PosXZ':
+        """(cxr, czr) chunk position coordinates relative to its region"""
+        return self.__class__(*(c % g for c, g in zip(self.as_chunk, CHUNK_GRID)))
+        # or:  PosXZ(*((c // s) % g for c, s, g in zip(self, CHUNK_SIZE, CHUNK_GRID)))
+
+    def to_pos(self, y: int = 0) -> Pos:
+        return Pos(self.x, y, self.z)
+    to_xyz = to_pos
 
     @classmethod
     def from_tag(cls, tag):
         return cls(tag['xPos'], tag['zPos'])
 
     def __str__(self):
-        return str(self.to_int())
+        return super().__str__(self.as_integers)
 
 
 class LazyFileObjects(collections.abc.MutableMapping):
