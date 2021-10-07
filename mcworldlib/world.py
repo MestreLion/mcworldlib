@@ -133,7 +133,7 @@ class World(level.Level):
         # /region, /DIM-1/region, /DIM1/region
         log.info("Loading World '%s': %s", self.name, self.path)
         for dim in u.Dimension:
-            folder = os.path.join(self.path, f'DIM{dim.value}' if dim.value else '', 'region')
+            folder = os.path.join(self.path, dim.subfolder(), 'region')
             if not os.path.isdir(folder):
                 continue
             for filename in os.listdir(folder):

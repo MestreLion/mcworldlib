@@ -51,6 +51,9 @@ class Dimension(enum.Enum):
     NETHER    = -1
     END       =  1
 
+    def subfolder(self):
+        return '' if self.name == 'OVERWORLD' else f'DIM{self.value}'
+
 
 # noinspection PyRedundantParentheses
 class Pos(typing.NamedTuple):
