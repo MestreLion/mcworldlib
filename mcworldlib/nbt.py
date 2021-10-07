@@ -32,9 +32,9 @@ Exported items:
 #   - maybe this is only meant for nbtlib.Schema?
 # - String.__str__() should not quote or escape
 from nbtlib.tag import *  # @UnusedWildImport
-from nbtlib.nbt import File as nbtlib_File
+from nbtlib.nbt import File as _File
 from nbtlib.path import Path  # @UnusedImport
-from nbtlib.literal.serializer import Serializer
+from nbtlib.literal.serializer import Serializer as _Serializer
 
 
 class Root(Compound):
@@ -57,7 +57,7 @@ class Root(Compound):
         return self
 
     def pretty(self, indent=4, compact=False, quote=None):
-        return Serializer(indent=indent, compact=compact, quote=quote).serialize(self)
+        return _Serializer(indent=indent, compact=compact, quote=quote).serialize(self)
 
     # The following are copy-pasted from nbtlib.File
 
@@ -80,10 +80,11 @@ class Root(Compound):
         self[self.root_name] = value
 
 
-class File(Root, nbtlib_File):
+# Overrides and extensions
+
+class File(Root, _File):
     # Lame overload so it inherits from Root
     __slots__ = ()
-del nbtlib_File
 
 
 String.__str__ = lambda _: str.__str__(_)

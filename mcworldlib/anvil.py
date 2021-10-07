@@ -83,12 +83,12 @@ class AnvilFile(collections.abc.MutableMapping):
         self._chunks = {c.pos: c for c in chunks}
 
     @classmethod
-    def load(cls, filename) -> 'AnvilFile':
+    def load(cls, filename):
         """Load anvil file from a path"""
         return cls.parse(open(filename, 'rb'))
 
     @classmethod
-    def parse(cls, buff) -> 'AnvilFile':
+    def parse(cls, buff):
         """Parse region from file-like object, build an instance and return it
 
         https://minecraft.gamepedia.com/Region_file_format

@@ -18,13 +18,13 @@ __all__ = [
     'pretty',
 ]
 
-import collections.abc
+import collections.abc as abc
 import enum
 import os.path
 import platform
 import pprint
 import time
-import typing
+import typing as t
 
 
 # platform-dependent minecraft directory paths
@@ -55,7 +55,7 @@ class Dimension(enum.Enum):
         return '' if self.name == 'OVERWORLD' else f'DIM{self.value}'
 
 
-class Pos(typing.NamedTuple):
+class Pos(t.NamedTuple):
     # Consider officially allowing floats? Otherwise .as_integers makes no sense
     x: int
     y: int
@@ -121,7 +121,7 @@ class Pos(typing.NamedTuple):
 
 
 # TODO: Use it more!
-class PosXZ(typing.NamedTuple):
+class PosXZ(t.NamedTuple):
     x: int
     z: int
 
@@ -166,27 +166,28 @@ class PosXZ(typing.NamedTuple):
         return super().__str__(self.as_integers)
 
 
-class LazyFileObjects(collections.abc.MutableMapping):
+class LazyFileObjects(abc.MutableMapping):
     """Keyed collection of objects loaded from files lazily on access"""
     __slots__ = (
         '_items',
         '_load_kwargs',
     )
-    ItemClass = tuple
-    collective = 'items'
+    ItemClass: type = object   # Class or type of items *after* being loaded
+    collective: str = 'items'  # Collective noun for the items, used in __repr__()
 
-    def __init__(self, items=None, **load_kwargs):
-        self._items = dict(items) if items is not None else {}
-        self._load_kwargs = load_kwargs
+    def __init__(self, items: t.MutableMapping[t.Any, t.Any] = None, **load_kwargs):
+        self._items:       dict = dict(items) if items is not None else {}
+        self._load_kwargs: dict = load_kwargs
 
-    def _load_lazy_object(self, item, **kwargs):
+    def _load_lazy_object(self, item: t.Any, **kwargs) -> ItemClass:
         raise NotImplementedError
 
     def __getitem__(self, key):
-        item = self._items[key]
+        item: t.Any = self._items[key]
         if isinstance(item, self.ItemClass):
             return item
-        obj = self._load_lazy_object(item, **self._load_kwargs)
+        # noinspection PyTypeHints
+        obj: self.ItemClass = self._load_lazy_object(item, **self._load_kwargs)
         self._items[key] = obj
         return obj
 
