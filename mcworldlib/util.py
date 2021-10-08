@@ -181,23 +181,21 @@ class LazyFileObjects(abc.MutableMapping):
     __slots__ = (
         '_items',
         '_loaded',
-        '_load_kwargs',
     )
     collective: str = 'items'  # Collective noun for the items, used in __repr__()
 
-    def __init__(self, items: t.MutableMapping[t.Any, t.Any] = None, **load_kwargs):
-        self._items:       dict = dict(items) if items is not None else {}
+    def __init__(self, items: t.MutableMapping[t.Any, t.Any] = None):
+        self._items:       dict = {} if items is None else dict(items)
         self._loaded:      set  = set(self._items.keys())
-        self._load_kwargs: dict = load_kwargs
 
-    def _load_lazy_object(self, item: t.Any, **kwargs) -> object:
+    def _load_lazy_object(self, item: t.Any) -> object:
         raise NotImplementedError
 
     def __getitem__(self, key):
         item: t.Any = self._items[key]
         if key in self._loaded:
             return item
-        obj: object = self._load_lazy_object(item, **self._load_kwargs)
+        obj: object = self._load_lazy_object(item)
         self._items[key] = obj
         self._loaded.add(key)  # mark it as loaded
         return obj

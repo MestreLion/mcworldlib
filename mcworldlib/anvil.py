@@ -295,17 +295,17 @@ class Regions(u.LazyFileObjects):
     collective = 'regions'
 
     __slots__ = (
-        'dimension',
         'world',
+        'dimension',
     )
 
-    def __init__(self, *args, **kw):
-        self.world     = kw.pop('world', None)
-        self.dimension = kw.pop('dimension', None)
-        super().__init__(*args, **kw)
+    def __init__(self, region_paths: dict = None, world=None, dimension=None):
+        super().__init__(region_paths)
+        self.world     = world
+        self.dimension = dimension
 
-    def _load_lazy_object(self, region, **kw):
-        region = RegionFile.load(region, **kw)
+    def _load_lazy_object(self, path):
+        region = RegionFile.load(path)
         region.regions = self
         return region
 
