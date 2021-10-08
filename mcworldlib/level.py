@@ -18,7 +18,9 @@ from . import player
 class Level(nbt.File):
     """level.dat file"""
 
-    __slots__ = ('player')
+    __slots__ = (
+        'player',
+    )
     _root_name = nbt.Path("''.Data")
 
     def __init__(self, *args, **kwargs):
@@ -26,7 +28,7 @@ class Level(nbt.File):
         self.player = None
 
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename, **kwargs):
         return super().load(filename, gzipped=True, byteorder='big')
 
     @classmethod
@@ -34,9 +36,9 @@ class Level(nbt.File):
         self = super().parse(buff, *args, **kwargs)
 
         # Player
-        playername = 'Player'
-        self.player = player.Player(self.root[playername])
-        self.player.name = playername
+        name = 'Player'
+        self.player = player.Player(self.root[name])
+        self.player.name = name
         self.player.world = self
 
         return self

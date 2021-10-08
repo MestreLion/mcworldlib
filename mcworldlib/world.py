@@ -105,7 +105,7 @@ class World(level.Level):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, progress=True):
+    def load(cls, path, progress=True, **kwargs):
         # /level.dat and directory path
         if hasattr(path, 'name'):
             # Assume file-like buffer to level.dat
@@ -113,17 +113,17 @@ class World(level.Level):
             self.path = os.path.dirname(path.name)
         elif os.path.isfile(path):
             # Assume level.dat itself
-            self = super().load(path)
+            self = super().load(path, **kwargs)
             self.path = os.path.dirname(path)
         elif os.path.isdir(path):
             # Assume directory containing level.dat
-            self = super().load(os.path.join(path, 'level.dat'))
+            self = super().load(os.path.join(path, 'level.dat'), **kwargs)
             self.path = path
         else:
             # Last chance: try path as name of a minecraft save dir
             path = os.path.expanduser(os.path.join(u.MINECRAFT_SAVES_DIR, path))
             if os.path.isdir(path):
-                self = super().load(os.path.join(path, 'level.dat'))
+                self = super().load(os.path.join(path, 'level.dat'), **kwargs)
                 self.path = path
             else:
                 # self = cls()  # blank world
