@@ -155,8 +155,6 @@ class AnvilFile(collections.abc.MutableMapping):
         if not self:  # no chunks
             return 0
 
-        # TODO: be smart and do not overwrite the whole file
-        #       Use chunk.dirty and a good (re-)allocation algorithm
         count = self._max_chunks()
         locations  = numpy.zeros(count, dtype=f'>u{CHUNK_LOCATION_BYTES}')
         timestamps = numpy.zeros(count, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}')
@@ -285,22 +283,6 @@ class RegionFile(AnvilFile):
     def dimension(self):
         return getattr(self.regions, 'dimension', None)
 
-    def get_chunk(self, cx, cz):
-        """Return the chunk at world chunk coordinate (cx, cz)
-
-        For local, region coordinates simply use region[x, z]
-        """
-        if not self.pos:
-            raise RegionError(f"Invalid region position coordinates: {self.pos!r}")
-        cpos = (cx - self.pos[0] * u.CHUNK_GRID[0],
-                cz - self.pos[1] * u.CHUNK_GRID[1])
-        if not ((0, 0) <= cpos < u.CHUNK_GRID):
-            raise RegionError(
-                f"Chunk at world ({cx}, {cz}) does not belong to region {self.pos}."
-                f" Try region ({cx//u.CHUNK_GRID[0]}, {cz//u.CHUNK_GRID[0]})."
-            )
-        return self[cpos]
-
     @classmethod
     def load(cls, filename, position=()):
         self = super().load(filename)
@@ -341,6 +323,14 @@ class RegionChunk(chunk.Chunk):
     external     -- If chunk data is in external (.mcc) file
     dirty        -- If data was changed and needs saving. Currently unused
     """
+    # TODO: be smart and do not overwrite the whole file
+    #       Use chunk.dirty and a good (re-)allocation algorithm
+    # Ideas for handling dirty data and partial save:
+    # - On load, save hash of uncompressed chunk data
+    # - Create __getitem__ access sentinels for regions in Regions and chunks in RegionFile
+    # - On __setitem__ and __delitem__ of both, create a dirty sentinel
+    # - Save regions and chunks that are dirty. If accessed, check hash to decide
+    # - If chunk sector_count is not greater, use same offset
     __slots__ = (
         'region',
         'pos',
