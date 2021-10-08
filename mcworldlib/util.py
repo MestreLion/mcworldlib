@@ -209,6 +209,10 @@ class LazyFileObjects(abc.MutableMapping):
     def __delitem__(self, key):    del self._items[key]; self._loaded.discard(key)
     def __contains__(self, key):   return key in self._items  # optional
 
+    def pretty(self, indent=4):
+        # Access self._items directly to avoid loading items
+        return pprint.pformat(self._items, indent=indent)
+
     def __str__(self):
         return str(self._items)
 
@@ -233,7 +237,8 @@ def now() -> int:
 
 
 def pretty(obj, indent=4):
-    if hasattr(obj, 'pretty'):
+    """Prints a pretty representation of obj"""
+    try:
         print(obj.pretty(indent=indent))
-    else:
+    except AttributeError:
         pprint.pprint(obj, indent=indent)

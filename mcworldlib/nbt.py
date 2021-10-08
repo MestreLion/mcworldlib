@@ -5,21 +5,9 @@
 """NBT handling
 
 Wraps whatever library is used as backend, currently nbtlib
-
-Exported items:
-    Compound
-    File
-    Path
-    Root
 """
 
-# No __all__, as being a wrapper it exports everything
-#__all__ = [
-#    'Compound',
-#    'File',
-#    'Path',
-#    'Root',
-#]
+# No __all__, as being a wrapper it exports many names from the backend
 
 
 # TODO: (and suggest to nbtlib)
@@ -31,10 +19,12 @@ Exported items:
 #   - compound['string'] = 'foo' -> compound['string'] = String('foo')
 #   - maybe this is only meant for nbtlib.Schema?
 # - String.__str__() should not quote or escape
+# noinspection PyProtectedMember
+from nbtlib.tag import Base as _Base   # Not in nbtlib.tag.__all__
 from nbtlib.tag import *  # @UnusedWildImport
 from nbtlib.nbt import File as _File
 from nbtlib.path import Path  # @UnusedImport
-from nbtlib.literal.serializer import Serializer as _Serializer
+from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
 
 class Root(Compound):
@@ -55,9 +45,6 @@ class Root(Compound):
         if cls._root_name:
             cls.root_name = property(lambda _: _._root_name)
         return self
-
-    def pretty(self, indent=4, compact=False, quote=None):
-        return _Serializer(indent=indent, compact=compact, quote=quote).serialize(self)
 
     # The following are copy-pasted from nbtlib.File
 
@@ -87,4 +74,9 @@ class File(Root, _File):
     __slots__ = ()
 
 
-String.__str__ = lambda _: str.__str__(_)
+def _pretty(self, indent=4):
+    return _serialize_tag(self, indent=indent)
+
+
+_Base.pretty = _pretty
+String.__str__ = lambda self: str.__str__(self)
