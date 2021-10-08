@@ -41,13 +41,13 @@ CHUNK_COMPRESSION_MASK = 2**CHUNK_COMPRESSION_BITS - 1    # 0b01111111 = 127
 CHUNK_HEADER = struct.Struct(CHUNK_HEADER_FMT)
 
 # Could be an Enum, but not worth it
-COMPRESSION_NONE = 0  # Not in spec
 COMPRESSION_GZIP = 1  # GZip (RFC1952) (unused in practice)
 COMPRESSION_ZLIB = 2  # Zlib (RFC1950)
+COMPRESSION_NONE = 3  # Uncompressed. Mentioned in the wiki, unused in practice
 COMPRESSION_TYPES = (
-    # COMPRESSION_NONE is intentionally not in this list
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
+    COMPRESSION_NONE,
 )
 
 log = logging.getLogger(__name__)
@@ -353,14 +353,14 @@ class RegionChunk(chunk.Chunk):
         'dirty',
     )
     compress = {
-        COMPRESSION_NONE: lambda _: _,
         COMPRESSION_GZIP: gzip.compress,
         COMPRESSION_ZLIB: zlib.compress,
+        COMPRESSION_NONE: lambda _: _,
     }
     decompress = {
-        COMPRESSION_NONE: lambda _: _,
         COMPRESSION_GZIP: gzip.decompress,
         COMPRESSION_ZLIB: zlib.decompress,
+        COMPRESSION_NONE: lambda _: _,
     }
 
     def __init__(self, *args, **tags):
@@ -371,7 +371,7 @@ class RegionChunk(chunk.Chunk):
         self.offset:        int         = 0  # Set by AnvilFile.parse()
         self.sector_count:  int         = 0
         self.timestamp:     int         = 0  # Also set by AnvilFile.parse()
-        self.compression:   int         = COMPRESSION_NONE  # = 0
+        self.compression:   int         = COMPRESSION_ZLIB  # Minecraft default
         self.external:      bool        = False  # MCC files
         self.dirty:         bool        = True  # For now
 
