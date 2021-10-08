@@ -310,7 +310,6 @@ class RegionFile(AnvilFile):
 
 class Regions(u.LazyFileObjects):
     """Collection of RegionFiles"""
-    ItemClass = RegionFile
     collective = 'regions'
 
     __slots__ = (

@@ -180,33 +180,34 @@ class LazyFileObjects(abc.MutableMapping):
     """Keyed collection of objects loaded from files lazily on access"""
     __slots__ = (
         '_items',
+        '_loaded',
         '_load_kwargs',
     )
-    ItemClass: type = object   # Class or type of items *after* being loaded
     collective: str = 'items'  # Collective noun for the items, used in __repr__()
 
     def __init__(self, items: t.MutableMapping[t.Any, t.Any] = None, **load_kwargs):
         self._items:       dict = dict(items) if items is not None else {}
+        self._loaded:      set  = set(self._items.keys())
         self._load_kwargs: dict = load_kwargs
 
-    def _load_lazy_object(self, item: t.Any, **kwargs) -> ItemClass:
+    def _load_lazy_object(self, item: t.Any, **kwargs) -> object:
         raise NotImplementedError
 
     def __getitem__(self, key):
         item: t.Any = self._items[key]
-        if isinstance(item, self.ItemClass):
+        if key in self._loaded:
             return item
-        # noinspection PyTypeHints
-        obj: self.ItemClass = self._load_lazy_object(item, **self._load_kwargs)
+        obj: object = self._load_lazy_object(item, **self._load_kwargs)
         self._items[key] = obj
+        self._loaded.add(key)  # mark it as loaded
         return obj
 
     # ABC boilerplate
-    def __iter__(self): return iter(self._items)  # for key in self._items: yield key
-    def __len__(self): return len(self._items)
-    def __setitem__(self, key, value): self._items[key] = value
-    def __delitem__(self, key): del self._items[key]
-    def __contains__(self, key): return key in self._items  # optional
+    def __iter__(self):            return iter(self._items)
+    def __len__(self):             return len(self._items)
+    def __setitem__(self, key, v): self._items[key] = v; self._loaded.discard(key)
+    def __delitem__(self, key):    del self._items[key]; self._loaded.discard(key)
+    def __contains__(self, key):   return key in self._items  # optional
 
     def __str__(self):
         return str(self._items)
