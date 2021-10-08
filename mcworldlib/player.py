@@ -31,4 +31,5 @@ class Player(nbt.Compound):
         if not self.world:
             return None
 
-        return self.world.get_chunk_at(self['Pos'], u.Dimension(self['Dimension']))
+        return self.world.get_chunk_at(self['Pos'],
+                                       u.Dimension.from_nbt(self['Dimension']))

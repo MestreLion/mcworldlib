@@ -47,12 +47,22 @@ class MCError(Exception):
 
 
 class Dimension(enum.Enum):
-    OVERWORLD =  0
-    NETHER    = -1
-    END       =  1
+    OVERWORLD  =  0
+    THE_NETHER = -1
+    THE_END    =  1
+
+    # Aliases
+    NETHER     = -1
+    END        =  1
 
     def subfolder(self):
         return '' if self.name == 'OVERWORLD' else f'DIM{self.value}'
+
+    @classmethod
+    def from_nbt(cls, dimension) -> 'Dimension':
+        if isinstance(dimension, int):
+            return cls(dimension)
+        return cls[dimension.split(':')[-1].upper()]  # Ewww!
 
 
 class Pos(t.NamedTuple):
