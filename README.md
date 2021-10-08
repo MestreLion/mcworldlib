@@ -1,112 +1,139 @@
 # mcworldlib
-Yet another library to manipulate Minecraft data, inspired by pymclevel
+Yet another library to manipulate Minecraft data,
+inspired by [pymclevel](https://github.com/mcedit/pymclevel),
+building on top of the amazing [nbtlib](https://github.com/vberlier/nbtlib).
 
 ```pycon
 >>> import mcworldlib as mc
->>> world = mc.load('New World')  # You can load Worlds by level.dat path, save folder or World name.
->>> mc.pretty(world)  # All MC classes have a pretty formatting. In most cases its NBT data.
+>>> world = mc.load('New World')  # Use level.dat path, save folder or World name.
+>>> mc.pretty(world)  # Many classes have a pretty print. In some cases, their NBT data.
+INFO  : Loading World 'New World': /home/rodrigo/.minecraft/saves/New World
 {
     "": {
         Data: {
-            WanderingTraderSpawnChance: 75,
-            RandomSeed: 1593845888518578062L,
-            generatorName: "default",
+            WanderingTraderSpawnChance: 25,
             BorderCenterZ: 0.0d,
             Difficulty: 2b,
             BorderSizeLerpTime: 0L,
             raining: 0b,
-            DimensionData: {
-                1: {
-                    DragonFight: {
-                        Gateways: [16, 15, 7, 8, 5, 18, 14, 0, 11, 17, 6, 19, 13, 4, 12, 10, 3, 2, 1, 9],
-                        DragonKilled: 1b,
-                        PreviouslyKilled: 1b
-                    }
-                }
-            },
-            Time: 119768L,
+            Time: 128L,
             GameType: 0,
-            MapFeatures: 1b,
-...
->>> mc.pretty(world.regions)  # World Regions are a dictionary of region coordinates and its Region objects
-{   (-2, -3): <RegionFile(r.-2.-3.mca: 242 chunks)>,
-    (-2, -2): <RegionFile(r.-2.-2.mca: 443 chunks)>,
-    (-2, -1): <RegionFile(r.-2.-1.mca: 416 chunks)>,
-    (-2, 0): <RegionFile(r.-2.0.mca: 321 chunks)>,
-    (-1, -3): <RegionFile(r.-1.-3.mca: 576 chunks)>,
-    (-1, -2): <RegionFile(r.-1.-2.mca: 1024 chunks)>,
-    (-1, -1): <RegionFile(r.-1.-1.mca: 1024 chunks)>,
-    (-1, 0): <RegionFile(r.-1.0.mca: 768 chunks)>,
-    (0, -3): <RegionFile(r.0.-3.mca: 405 chunks)>,
-    (0, -2): <RegionFile(r.0.-2.mca: 1013 chunks)>,
-    (0, -1): <RegionFile(r.0.-1.mca: 1024 chunks)>,
-    (0, 0): <RegionFile(r.0.0.mca: 637 chunks)>,
-    (1, -2): <RegionFile(r.1.-2.mca: 56 chunks)>,
-    (1, -1): <RegionFile(r.1.-1.mca: 64 chunks)>,
-    (1, 0): <RegionFile(r.1.0.mca: 3 chunks)>}
+            ServerBrands: ["fabric"],
+            BorderCenterX: 0.0d,
+            BorderDamagePerBlock: 0.2d,
+            BorderWarningBlocks: 5.0d,
+            ...
+            ScheduledEvents: [],
+            LevelName: "New World",
+            BorderSize: 60000000.0d,
+            DataVersion: 2730,
+            DataPacks: {
+                Enabled: ["vanilla", "Fabric Mods"],
+                Disabled: []
+            }
+        }
+    }
+}
 
->>> region = world.regions[1,0]
->>> mc.pretty(region)  # A Region is a dictionary of chunks
+>>> mc.pretty(world.regions)  # Regions are a dictionary of coordinates and objects
+{   (-2, -1): '/home/rodrigo/.minecraft/saves/New World/region/r.-2.-1.mca',
+    (-2, 0): '/home/rodrigo/.minecraft/saves/New World/region/r.-2.0.mca',
+    (-2, 1): '/home/rodrigo/.minecraft/saves/New World/region/r.-2.1.mca',
+    ...
+    (1, 0): '/home/rodrigo/.minecraft/saves/New World/region/r.1.0.mca',
+    (1, 1): '/home/rodrigo/.minecraft/saves/New World/region/r.1.1.mca',
+    (1, 2): '/home/rodrigo/.minecraft/saves/New World/region/r.1.2.mca'}
+
+>>> region = world.regions[1,0]  # A Region is a dictionary of chunks
+>>> mc.pretty(region)
 {
-    (0, 0): <Chunk [0, 0] in world at (32, 0) saved on 2019-12-11 08:39:51>,
-    (1, 0): <Chunk [1, 0] in world at (33, 0) saved on 2019-12-11 08:39:44>,
-    (0, 1): <Chunk [0, 1] in world at (32, 1) saved on 2019-12-11 08:39:51>
+    (0, 0): <Chunk [0, 0] in world at (32, 0) saved on 2021-10-08 07:38:33>,
+    (1, 0): <Chunk [1, 0] in world at (33, 0) saved on 2021-10-08 07:38:33>,
+    (2, 0): <Chunk [2, 0] in world at (34, 0) saved on 2021-10-08 07:38:33>,
+    ...
+    (29, 31): <Chunk [29, 31] in world at (61, 31) saved on 2021-10-08 07:39:35>,
+    (30, 31): <Chunk [30, 31] in world at (62, 31) saved on 2021-10-08 07:39:31>,
+    (31, 31): <Chunk [31, 31] in world at (63, 31) saved on 2021-10-08 07:39:27>
 }
 
 >>> chunk = region[0,1]
->>> mc.pretty(chunk)
+>>> mc.pretty(chunk)  # alternatively, print(chunk.pretty())
 {
     "": {
         Level: {
-            Status: "structure_starts",
+            Status: "full",
             zPos: 1,
-            LastUpdate: 41328L,
+            LastUpdate: 63326L,
             InhabitedTime: 0L,
             xPos: 32,
-            Heightmaps: {},
             TileEntities: [],
-            Entities: [],
-...
+            isLightOn: 1b,
+            TileTicks: [],
+            ...
+            Entities: []
+        },
+        DataVersion: 2730
+    }
+}
 
->>> for chunk in (                          # You can also fetch a chunk by several ways:
-...     world.get_chunk_at((120, 63, 42)),  # - The chunk containing an absolute (X, Y, Z) coordinate
-...     world.player.get_chunk(),           # - The chunk the player is in
+>>> for chunk in (                          # You can fetch a chunk by several ways:
+...     world.get_chunk_at((120, 63, 42)),  # At an absolute (X, Y, Z) coordinate
+...     world.player.get_chunk(),           # The chunk the player is in
 ... ):
 ...     print(chunk)
 ...
-<Chunk [7, 2] in world at (7, 2) saved on 2019-12-16 05:11:22>
-<Chunk [8, 31] in world at (8, -1) saved on 2019-12-16 05:11:22>
->>>
+<Chunk [7, 2] in world at (7, 2) saved on 2021-10-08 07:41:44>
+<Chunk [29, 3] in world at (29, 35) saved on 2021-10-08 07:41:45>
 
->>> block = world.get_block_at((100, 63, 100))  # You can read the block info at a (X, Y, Z) coordinate
+>>> block = world.get_block_at((100, 60, 100))  # Get the block info at any coordinate!
 >>> print(block)
-{Name: "minecraft:diamond_block"}
+{Name: "minecraft:sand"}
 ```
 
-Another not so noble usage example:
-
+Reading and modifying the Player's inventory is quite easy:
 ```python
 import mcworldlib as mc
-
 world = mc.load('New World')
+inventory = world.player.inventory
+# The above is a shortcut for world.root['Data']['Player']['Inventory']
 
-for item in world['']['Data']['Player']['Inventory']:
-    item['id'] = mc.String('minecraft:diamond_block')
-    item['Count'] = mc.Byte(64)
+# Easily loop each item as if the inventory were a list. In fact, it *is*!
+for item in inventory:
+    print(f"Slot {item['Slot']:3}: {item['Count']:2} x {item['id']}")
+```
+```
+INFO  : Loading World 'New World': /home/rodrigo/.minecraft/saves/New World
+Slot   0:  1 x minecraft:diamond_sword
+Slot   1:  1 x minecraft:bow
+Slot   2:  1 x minecraft:diamond_pickaxe
+Slot   3:  1 x minecraft:diamond_pickaxe
+Slot   8: 64 x minecraft:torch
+Slot   9:  1 x minecraft:filled_map
+Slot  17:  8 x minecraft:arrow
+Slot  26: 35 x minecraft:birch_log
+Slot  27:  1 x minecraft:diamond_axe
+Slot  28:  1 x minecraft:diamond_shovel
+Slot  35:  5 x minecraft:ender_chest
+Slot 100:  1 x minecraft:diamond_boots
+Slot 101:  1 x minecraft:diamond_leggings
+Slot 102:  1 x minecraft:diamond_chestplate
+Slot 103:  1 x minecraft:diamond_helmet
+Slot -106: 62 x minecraft:cooked_beef
+```
+
+How about some **diamonds**?
+Get 64 *blocks* of it in each one of your free inventory slots!
+
+```python
+free_slots = set(range(9, 36)) - set(item['Slot'] for item in inventory)
+for slot in free_slots:
+    item = mc.Compound({
+        'Slot':  mc.Byte(slot),
+        'id':    mc.String('minecraft:diamond_block'),  # Sweet!
+        'Count': mc.Byte(64),  # Enough for you?
+    })
+    inventory.append(item)  # yup, it's THAT simple!
 
 world.save()
-
-for region in world.regions.values():
-    found = False
-    for chunk in region.values():
-        for section in chunk['']['Level']['Sections']:
-            for block in section.get('Palette', []):
-                if block['Name'] == 'minecraft:grass_block':
-                    block['Name'] = mc.String('minecraft:diamond_block')
-                    if 'Properties' in block:
-                        del block['Properties']
-                    found = True
-                    break
-    if found:
-        region.save()
 ```
+Have fun, you millionaire!
