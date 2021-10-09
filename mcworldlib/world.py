@@ -34,14 +34,12 @@ class World(level.Level):
     __slots__ = (
         'path',
         'dimensions',
-        'regions',
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.path = ""
-        self.dimensions = {_: anvil.Regions(world=self, dimension=_) for _ in u.Dimension}
-        self.regions = self.dimensions[u.Dimension.OVERWORLD]  # shortcut
+        self.dimensions = {}
 
     @property
     def name(self):
@@ -55,6 +53,11 @@ class World(level.Level):
     def level(self):
         """Somewhat redundant API shortcut, as for now World *is* a Level"""
         return self.root
+
+    @property
+    def regions(self):
+        """Shortcut for OverWorld regions"""
+        return self.dimensions.get(u.Dimension.OVERWORLD, {})
 
     @property
     def chunk_count(self):
@@ -129,17 +132,14 @@ class World(level.Level):
                 # self = cls()  # blank world
                 raise WorldNotFoundError(f"World not found: {path}")
 
-        # Region files
-        # /region, /DIM-1/region, /DIM1/region
         log.info("Loading World '%s': %s", self.name, self.path)
-        for dim in u.Dimension:
-            folder = os.path.join(self.path, dim.subfolder(), 'region')
-            if not os.path.isdir(folder):
-                continue
-            for filename in os.listdir(folder):
-                path = os.path.join(folder, filename)
-                pos = anvil.RegionFile.pos_from_filename(path)
-                self.dimensions[dim][pos] = path
+
+        # Dimensions and their Region files
+        # /region, /DIM-1/region, /DIM1/region
+        # TODO: Read custom dimensions! /dimensions/<prefix>/<name>/region
+        for dimension in u.Dimension:
+            self.dimensions[dimension] = anvil.Regions.load(self, dimension, 'region')
+            # ...
 
         # ...
 

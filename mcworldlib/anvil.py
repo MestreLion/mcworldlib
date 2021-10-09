@@ -17,6 +17,7 @@ import gzip
 import io
 import logging
 import os.path
+import pathlib
 import re
 import struct
 import zlib
@@ -60,6 +61,9 @@ class ChunkError(u.MCError): pass
 class AnvilFile(collections.abc.MutableMapping):
     """Collection of Chunks in Anvil (.mca) file format.
 
+    Should be completely agnostic about Worlds and Dimensions
+    and hence unaware of Pos. For that, see RegionFile subclass
+
     Attributes:
         filename -- The name of the file
     """
@@ -67,10 +71,9 @@ class AnvilFile(collections.abc.MutableMapping):
         '_chunks',
         'filename',
     )
-    _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
 
-    def __init__(self, **chunks):
-        self._chunks:   dict   = chunks
+    def __init__(self, chunks: dict = None):
+        self._chunks:   dict   = {} if chunks is None else dict(chunks)
         self.filename:  str    = ""
 
     @property
@@ -186,18 +189,6 @@ class AnvilFile(collections.abc.MutableMapping):
         written += buff.write(timestamps.tobytes())
         return written
 
-    @classmethod
-    def pos_from_filename(cls, filename):
-        if not filename:
-            return None
-
-        m = re.fullmatch(cls._re_filename, os.path.basename(filename))
-        if not m:
-            return None
-
-        return (int(m.group('rx')),
-                int(m.group('rz')))
-
     @staticmethod
     def _unpack_location(location):
         """Helper to extract chunk offset (in bytes) and sector_count from location."""
@@ -258,16 +249,18 @@ class RegionFile(AnvilFile):
     """Collection of Chunks in a World Dimension.
 
     Being in a World extends AnvilFile with extra attributes and properties:
-    regions   -- Collection this region belongs to, derives world and dimension
+    regions   -- Collection this region belongs to. Derives world, dimension and category
     world     -- parent World that contains this region
     dimension -- Dimension this region is located: Overworld, Nether, End
+    category  -- The subfolder in its Dimension: region, poi, entities, etc
     pos       -- (x, z) relative position in World, also its key in dimension mapping
-                 Ultimately derived from filename
+                 Derived from filename by Regions.load_from_path()
     """
     __slots__ = (
         'regions',
         'pos',
     )
+    _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -283,31 +276,70 @@ class RegionFile(AnvilFile):
     def dimension(self):
         return getattr(self.regions, 'dimension', None)
 
+    @property
+    def category(self):
+        return getattr(self.regions, 'category', "")
+
     @classmethod
-    def load(cls, filename, position=()):
-        self = super().load(filename)
-        self.pos = position or self.pos_from_filename(self.filename)
-        return self
+    def pos_from_filename(cls, filename):
+        m = re.fullmatch(cls._re_filename, os.path.basename(filename))
+        if not m:
+            return ()
+
+        return tuple(map(int, m.groups()))
 
 
 class Regions(u.LazyFileObjects):
     """Collection of RegionFiles"""
+    # If Dimension becomes a 1st class citizen, world can be read from dimension
     collective = 'regions'
 
     __slots__ = (
         'world',
         'dimension',
+        'path',
     )
 
-    def __init__(self, region_paths: dict = None, world=None, dimension=None):
-        super().__init__(region_paths)
-        self.world     = world
-        self.dimension = dimension
+    def __init__(self, regions: dict = None):
+        super().__init__(regions)
+        self.path      = ""
+        self.dimension = None
+        self.world     = None
 
-    def _load_lazy_object(self, path):
+    @property
+    def category(self):
+        """Directory basename, i.e, the last component of path"""
+        if not self.path:
+            return ""
+        return os.path.basename(self.path)
+
+    def _load_lazy_object(self, item):
+        pos, path = item
         region = RegionFile.load(path)
         region.regions = self
+        region.pos = pos
         return region
+
+    @classmethod
+    def load(cls, world, dimension, category):
+        path = os.path.join(world.path, dimension.subfolder(), category)
+        self = cls.load_from_path(path)
+        self.world = world
+        self.dimension = dimension
+        return self
+
+    @classmethod
+    def load_from_path(cls, path, recursive=False):
+        self = cls()
+
+        glob = f"{'**/' if recursive else ''}*.mca"
+        for filepath in pathlib.Path(path).glob(glob):
+            if not filepath.is_file():
+                continue
+            pos = RegionFile.pos_from_filename(filepath)
+            self[pos] = pos, filepath
+
+        return self
 
 
 class RegionChunk(chunk.Chunk):
