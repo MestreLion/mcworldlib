@@ -2,12 +2,15 @@
 # Copyright (C) 2019 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 # License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
 
-"""Anvil (Region) MCA files and its chunks.
+"""Region MCA files in Anvil format
 
 Exported items:
     RegionChunk -- Chunk in a Region, inherits from chunk.Chunk
     RegionFile  -- Collection of RegionChunks in an Region file, inherits from MutableMapping
 """
+# Named 'anvil' just to let 'region' free for usage without 'import as'
+# Wish the chunk module had a similar uncommon alternative...
+
 
 __all__ = ['RegionFile']  # Not worth exporting RegionChunk yet
 
@@ -24,7 +27,7 @@ import zlib
 
 import numpy
 
-from . import chunk
+from . import chunk as c
 from . import util as u
 
 
@@ -83,7 +86,7 @@ class AnvilFile(collections.abc.MutableMapping):
 
     @chunks.setter
     def chunks(self, chunks):
-        self._chunks = {c.pos: c for c in chunks}
+        self._chunks = {_.pos: _ for _ in chunks}
 
     @classmethod
     def load(cls, filename):
@@ -114,7 +117,7 @@ class AnvilFile(collections.abc.MutableMapping):
 
             buff.seek(offset)
             try:
-                chunk = RegionChunk.parse(buff)
+                chunk: RegionChunk = RegionChunk.parse(buff)
             except ChunkError as e:
                 log.error(f"Could not parse {chunk_msg[0]}: %s", *chunk_msg[1:], e)
                 continue
@@ -316,7 +319,7 @@ class Regions(u.LazyFileObjects):
             return ""
         return os.path.basename(self.path)
 
-    def _load_lazy_object(self, item):
+    def _load_lazy_object(self, item: tuple):
         pos, path = item
         region = RegionFile.load(path)
         region.regions = self
@@ -335,7 +338,7 @@ class Regions(u.LazyFileObjects):
     def load_from_path(cls, path, recursive=False):
         self = cls()
 
-        glob = f"{'**/' if recursive else ''}*.mca"
+        glob = f"{'**/' if recursive else ''}r.*.*.mca"
         for filepath in pathlib.Path(path).glob(glob):
             if not filepath.is_file():
                 continue
@@ -349,7 +352,7 @@ class Regions(u.LazyFileObjects):
         return self
 
 
-class RegionChunk(chunk.Chunk):
+class RegionChunk(c.Chunk):
     """Chunk in a Region.
 
     Being in a Region extends Chunk with several extra attributes:
@@ -408,7 +411,7 @@ class RegionChunk(chunk.Chunk):
         return u.PosXZ.from_tag(self.root)
 
     @classmethod
-    def parse(cls, buff, *args, **kwargs):
+    def parse(cls, buff, *args, **kwargs) -> 'RegionChunk':
         """
         https://minecraft.fandom.com/wiki/Region_file_format#Chunk_data
         https://www.reddit.com/r/technicalminecraft/comments/e4wxb6/
@@ -429,7 +432,7 @@ class RegionChunk(chunk.Chunk):
             raise ChunkError('External MCC data file is not yet supported')
 
         data = cls.decompress[compression](buff.read(length))
-        self = super().parse(io.BytesIO(data), *args, **kwargs)
+        self: 'RegionChunk' = super().parse(io.BytesIO(data), *args, **kwargs)
 
         self.sector_count = num_sectors(length + CHUNK_HEADER.size)
         self.compression = compression
