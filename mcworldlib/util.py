@@ -65,7 +65,24 @@ class Dimension(enum.Enum):
         return cls[dimension.split(':')[-1].upper()]  # Ewww!
 
 
+class BasePos(tuple):
+    """Common methods for Pos and PosXZ
+
+    typing.NamedTuple has issues with multiple inheritance, so formally this is
+    not their superclass.
+    """
+    @property
+    def as_integers(self) -> tuple:  # actually t.Union['Pos', 'PosXZ']
+        """Coordinates truncated to integers"""
+        return self.__class__(*map(int, self))
+
+    def __repr__(self):
+        # works for __str__ too, as tuple does not define __str__
+        return '(' + ','.join(f"{int(_): {len(self)+1}}" for _ in self) + ')'
+
+
 class Pos(t.NamedTuple):
+    """Wrapper for a (x, y, z) tuple, with helpful conversions"""
     # Consider officially allowing floats? Otherwise .as_integers makes no sense
     x: int
     y: int
@@ -76,10 +93,7 @@ class Pos(t.NamedTuple):
     # If just presenting the same position in other format/reference: property as_*
     # If ready to be used elsewhere, with little point remaining Pos: -> tuple
 
-    @property
-    def as_integers(self) -> 'Pos':
-        """Coordinates truncated to integers"""
-        return self.__class__(*map(int, self))
+    as_integers = BasePos.as_integers
 
     @property
     def as_yzx(self) -> tuple: return self.y, self.x, self.z  # section block notation
@@ -123,22 +137,17 @@ class Pos(t.NamedTuple):
     as_xz = property(to_posxz)
 
     @classmethod
-    def from_tag(cls, tag):  # tag: nbt.Compound
-        return cls(*tag['Pos'])
+    def from_tag(cls, tag: t.Mapping[str, list]) -> 'Pos':  # tag: nbt.Compound
+        return cls(*tag['Pos']).as_integers
 
-    def __str__(self):
-        return super().__str__(self.as_integers)
+    __repr__ = BasePos.__repr__
 
 
-# TODO: Use it more!
 class PosXZ(t.NamedTuple):
     x: int
     z: int
 
-    @property
-    def as_integers(self) -> 'PosXZ':
-        """Coordinates truncated to integers"""
-        return self.__class__(*map(int, self))
+    as_integers = BasePos.as_integers
 
     @property
     def as_chunk(self) -> 'PosXZ':
@@ -169,11 +178,10 @@ class PosXZ(t.NamedTuple):
     to_xyz = to_pos
 
     @classmethod
-    def from_tag(cls, tag):
-        return cls(tag['xPos'], tag['zPos'])
+    def from_tag(cls, tag: t.Mapping[str, int]) -> 'PosXZ':  # tag: nbt.Compound
+        return cls(tag['xPos'], tag['zPos']).as_integers
 
-    def __str__(self):
-        return super().__str__(self.as_integers)
+    __repr__ = BasePos.__repr__
 
 
 class LazyFileObjects(abc.MutableMapping):

@@ -108,7 +108,7 @@ class AnvilFile(collections.abc.MutableMapping):
             if location == 0:
                 continue
 
-            pos = self._position_from_index(index)  # (x, z)
+            pos = self._position_from_index(index)
             offset, sector_count = self._unpack_location(location)
             chunk_msg = ("chunk %s at offset %s in %r", pos, offset, self.filename)
 
@@ -203,15 +203,18 @@ class AnvilFile(collections.abc.MutableMapping):
         return ((num_sectors(offset) << (8 *    CHUNK_SECTOR_COUNT_BYTES)) |
                 (num_sectors(length)  & (8 * 2**CHUNK_SECTOR_COUNT_BYTES - 1)))
 
-    @staticmethod
-    def _index_from_position(pos):
-        """Helper to get the location array index from a (x, z) chunk position"""
-        return pos[0] + u.CHUNK_GRID[0] * pos[1]
+    # Even if the following methods deal with Positions, avoid the temptation
+    # to add them to PosXZ.as_/from_. Best to keep region-related formulas here
 
     @staticmethod
-    def _position_from_index(index):
+    def _index_from_position(pos: u.PosXZ) -> int:
+        """Helper to get the location array index from a (x, z) chunk position"""
+        return pos.x + u.CHUNK_GRID[0] * pos.z
+
+    @staticmethod
+    def _position_from_index(index) -> u.PosXZ:
         """Helper to get the (x, z) chunk position from a location array index"""
-        return tuple(reversed(divmod(index, u.CHUNK_GRID[0])))
+        return u.PosXZ(*reversed(divmod(index, u.CHUNK_GRID[0])))
 
     @staticmethod
     def _max_chunks():
@@ -262,11 +265,11 @@ class RegionFile(AnvilFile):
     )
     _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
 
+    # noinspection PyTypeChecker
     def __init__(self, **kw):
         super().__init__(**kw)
-        # noinspection PyTypeChecker
         self.regions: Regions = None
-        self.pos:     tuple   = ()
+        self.pos:     u.PosXZ = None
 
     @property
     def world(self):
@@ -281,12 +284,12 @@ class RegionFile(AnvilFile):
         return getattr(self.regions, 'category', "")
 
     @classmethod
-    def pos_from_filename(cls, filename):
+    def pos_from_filename(cls, filename) -> u.PosXZ:
         m = re.fullmatch(cls._re_filename, os.path.basename(filename))
         if not m:
-            return ()
+            raise RegionError(f"Not a valid Region filename: {filename}")
 
-        return tuple(map(int, m.groups()))
+        return u.PosXZ(*map(int, m.groups()))
 
 
 class Regions(u.LazyFileObjects):
@@ -336,7 +339,11 @@ class Regions(u.LazyFileObjects):
         for filepath in pathlib.Path(path).glob(glob):
             if not filepath.is_file():
                 continue
-            pos = RegionFile.pos_from_filename(filepath)
+            try:
+                pos: u.PosXZ = RegionFile.pos_from_filename(filepath)
+            except RegionError as e:
+                log.warning("Ignoring file: %s", e)
+                continue
             self[pos] = pos, filepath
 
         return self
@@ -384,11 +391,11 @@ class RegionChunk(chunk.Chunk):
         COMPRESSION_NONE: lambda _: _,
     }
 
+    # noinspection PyTypeChecker
     def __init__(self, *args, **tags):
         super().__init__(*args, **tags)
-        # noinspection PyTypeChecker
         self.region:        RegionFile  = None
-        self.pos:           tuple       = ()  # (x, z)
+        self.pos:           u.PosXZ     = None
         self.offset:        int         = 0  # Set by AnvilFile.parse()
         self.sector_count:  int         = 0
         self.timestamp:     int         = 0  # Also set by AnvilFile.parse()
@@ -398,8 +405,7 @@ class RegionChunk(chunk.Chunk):
 
     @property
     def world_pos(self):
-        return (int(self.root['xPos']),
-                int(self.root['zPos']))
+        return u.PosXZ.from_tag(self.root)
 
     @classmethod
     def parse(cls, buff, *args, **kwargs):
@@ -460,7 +466,7 @@ class RegionChunk(chunk.Chunk):
 
     def __str__(self):
         """Just like NTBExplorer!"""
-        return (f"<Chunk {list(self.pos)}"
+        return (f"<Chunk [{', '.join(f'{_:2}' for _ in self.pos)}]"
                 f" in world at {self.world_pos}"
                 f" saved on {u.isodate(self.timestamp)}>")
 
