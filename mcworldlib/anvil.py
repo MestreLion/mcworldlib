@@ -11,9 +11,12 @@ Exported items:
 # Named 'anvil' just to let 'region' free for usage without 'import as'
 # Wish the chunk module had a similar uncommon alternative...
 
-
-__all__ = ['RegionFile']  # Not worth exporting RegionChunk yet
-
+__all__ = [
+    'RegionFile',
+    'Regions',
+    'RegionChunk',
+    'load_region',
+]
 
 import collections.abc
 import gzip
@@ -488,4 +491,4 @@ def num_sectors(size):
 
 
 # Just a convenience wrapper
-load = RegionFile.load
+load_region = RegionFile.load
