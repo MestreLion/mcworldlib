@@ -42,12 +42,9 @@ CHUNK_SECTOR_COUNT_BYTES = 1  # Assumed to be the least significant from CHUNK_L
 CHUNK_COMPRESSION_BYTES = 1  # Must match last element in CHUNK_HEADER_FMT
 CHUNK_HEADER_FMT = '>IB'  # Struct format. Chunk length (4 bytes) and compression type (1 byte)
 SECTOR_BYTES = 4096  # Could possibly be derived from CHUNK_GRID and CHUNK_*_BYTES
-# Derived
-CHUNK_COMPRESSION_BITS = 8 * CHUNK_COMPRESSION_BYTES - 1  # = 7
-CHUNK_COMPRESSION_MASK = 2**CHUNK_COMPRESSION_BITS - 1    # 0b01111111 = 127
-CHUNK_HEADER = struct.Struct(CHUNK_HEADER_FMT)
 
-# Could be an Enum, but not worth it
+# Compression used for NBT data in dat, mca (region), and mcc (external chunk) files
+# Do not convert to Enum, really not worth it until Python 3.7 and its _ignore
 COMPRESSION_GZIP = 1  # GZip (RFC1952) (unused in practice)
 COMPRESSION_ZLIB = 2  # Zlib (RFC1950)
 COMPRESSION_NONE = 3  # Uncompressed. Mentioned in the wiki, unused in practice
@@ -386,6 +383,10 @@ class RegionChunk(c.Chunk):
         'external',
         'dirty',
     )
+    CHUNK_HEADER = struct.Struct(CHUNK_HEADER_FMT)
+    COMPRESSION_BITS = 8 * CHUNK_COMPRESSION_BYTES - 1  # = 7
+    COMPRESSION_MASK = 2 ** COMPRESSION_BITS - 1  # 0b01111111 = 127
+
     compress = {
         COMPRESSION_GZIP: gzip.compress,
         COMPRESSION_ZLIB: zlib.compress,
@@ -422,13 +423,13 @@ class RegionChunk(c.Chunk):
         if not hasattr(buff, 'read'):  # assume bytes data
             buff = io.BytesIO(buff)
 
-        header = buff.read(CHUNK_HEADER.size)
+        header = buff.read(cls.CHUNK_HEADER.size)
         try:
-            length, compression = CHUNK_HEADER.unpack(header)
+            length, compression = cls.CHUNK_HEADER.unpack(header)
             length -= CHUNK_COMPRESSION_BYTES  # already read
         except struct.error as e:
             raise ChunkError(f"chunk header has {len(header)} bytes" +
-                             (f"({''.join(f'{_:x}' for _ in header)})"
+                             (f"({''.join(f'{_:X}' for _ in header)})"
                               if header else "") + f", {e}")
 
         external, compression = cls._unpack_compression(compression)
@@ -442,7 +443,7 @@ class RegionChunk(c.Chunk):
         data = cls.decompress[compression](buff.read(length))
         self: 'RegionChunk' = super().parse(io.BytesIO(data), *args, **kwargs)
 
-        self.sector_count = num_sectors(length + CHUNK_HEADER.size)
+        self.sector_count = num_sectors(length + cls.CHUNK_HEADER.size)
         self.compression = compression
         self.external = external
 
@@ -453,27 +454,28 @@ class RegionChunk(c.Chunk):
             super().write(b, *args, **kwargs)
             data = self.compress[self.compression](b.getbuffer())
         length = len(data)
-        size  = buff.write(CHUNK_HEADER.pack(length + CHUNK_COMPRESSION_BYTES,
-                                             self._pack_compression(self.external,
-                                                                    self.compression)))
+        size  = buff.write(
+            self.CHUNK_HEADER.pack(length + CHUNK_COMPRESSION_BYTES,
+                                   self._pack_compression(self.external,
+                                                          self.compression)))
         size += buff.write(data)
         if update_timestamp:
             self.timestamp = u.now()
-        assert size == CHUNK_HEADER.size + length
+        assert size == self.CHUNK_HEADER.size + length
         return size
 
-    @staticmethod
-    def _unpack_compression(compression):
+    @classmethod
+    def _unpack_compression(cls, compression):
         """Helper to extract chunk external flag and compression type"""
         # endless bitwise operations...
-        return (bool(compression >> CHUNK_COMPRESSION_BITS),
-                compression & CHUNK_COMPRESSION_MASK)
+        return (bool(compression >> cls.COMPRESSION_BITS),
+                compression & cls.COMPRESSION_MASK)
 
-    @staticmethod
-    def _pack_compression(external, compression):
+    @classmethod
+    def _pack_compression(cls, external, compression):
         """Helper to pack external flag and compression type"""
         # Python stdlib really needs bit structs...
-        return (int(external) << CHUNK_COMPRESSION_BITS) | compression
+        return (int(external) << cls.COMPRESSION_BITS) | compression
 
     def __str__(self):
         """Just like NTBExplorer!"""
@@ -488,7 +490,7 @@ class RegionChunk(c.Chunk):
 def num_sectors(size):
     """Helper to calculate the number of sectors in size bytes"""
     # Faster than math.ceil(size / SECTOR_BYTES)
-    # Not a AnvilFile static method so its other static methods can call this
+    # Used by AnvilFile and RegionChunk
     sectors = (size // SECTOR_BYTES)
     if size % SECTOR_BYTES:
         sectors += 1
