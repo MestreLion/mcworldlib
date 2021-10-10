@@ -46,6 +46,7 @@ class Chunk(nbt.Root):
         """
         blocks = {}
         for section in self.root['Sections']:
+            # noinspection PyPep8Naming
             Y = int(section['Y'])
             palette, indexes = self.get_section_blocks(Y, _section=section)
             if palette:
@@ -53,7 +54,8 @@ class Chunk(nbt.Root):
         for Y in sorted(blocks):
             yield (Y, *blocks[Y])
 
-    def get_section_blocks(self, Y:int, _section=None):
+    # noinspection PyPep8Naming
+    def get_section_blocks(self, Y: int, _section=None):
         """Return a (Palette, BlockState Indexes Array) tuple for a chunk section.
 
         Palette: NBT List of Block States, straight from NBT data
@@ -76,36 +78,39 @@ class Chunk(nbt.Root):
 
     def _decode_blockstates(self, data, palette=None):
         """Decode an NBT BlockStates LongArray to a block state indexes array"""
-        PACK_BITS = data.itemsize * 8  # 64 bits for each Long Array element
-        def bits_per_index(data, palette):
+        pack_bits = data.itemsize * 8  # 64 bits for each Long Array element
+
+        def bits_per_index():
             """the size required to represent the largest index (minimum of 4 bits)"""
-            def bits_from_data(data): return len(data) * PACK_BITS // self.BS_INDEXES
+            def bits_from_data(): return len(data) * pack_bits // self.BS_INDEXES
             if not palette:
                 # Infer from data length (not the way described by Wiki!)
-                return bits_from_data(data)
-            bits = max(self.BS_MIN_BITS, (len(palette) - 1).bit_length())
-            assert bits == bits_from_data(data), \
-                f"BlockState bits mismatch: {bits} != {bits_from_data(data)}"
-            return bits
-        bits = bits_per_index(data, palette)
+                return bits_from_data()
+            bit_length = max(self.BS_MIN_BITS, (len(palette) - 1).bit_length())
+            assert bit_length == bits_from_data(), \
+                f"BlockState bits mismatch: {bit_length} != {bits_from_data()}"
+            return bit_length
+
+        bits = bits_per_index()
         # Adapted from Amulet-Core's decode_long_array()
         # https://github.com/Amulet-Team/Amulet-Core/blob/develop/amulet/utils/world_utils.py
         indexes = numpy.packbits(
             numpy.pad(
                 numpy.unpackbits(
-                        data[::-1].astype(f">i{PACK_BITS//8}").view(f"uint{PACK_BITS//8}")
+                        data[::-1].astype(f">i{pack_bits//8}").view(f"uint{pack_bits//8}")
                     ).reshape(-1, bits),
-                [(0, 0), (PACK_BITS - bits, 0)],
+                [(0, 0), (pack_bits - bits, 0)],
                 "constant",
             )
         ).view(dtype=">q")[::-1]
         return indexes
 
-    def _encode_blockstates(self, data: numpy.ndarray, palette) -> numpy.ndarray:
+    # noinspection PyMethodMayBeStatic
+    def _encode_blockstates(self, data: numpy.ndarray, _palette) -> numpy.ndarray:
         """WIP
 
         Encode an long array (from BlockStates or Heightmaps)
-        :param array: A numpy array of the data to be encoded.
+        :param data: A numpy array of the data to be encoded.
         :return: Encoded array as numpy array
         """
         array = data.astype(">q")
