@@ -78,6 +78,9 @@ class AnvilFile(collections.abc.MutableMapping):
         'filename',
     )
 
+    MAX_CHUNKS = u.CHUNK_GRID[0] * u.CHUNK_GRID[1]  # 1024
+    MAX_CHUNK_SIZE = SECTOR_BYTES * (2**(8 * CHUNK_SECTOR_COUNT_BYTES) - 1)  # ~1MiB
+
     def __init__(self, chunks: dict = None):
         self._chunks:   dict   = {} if chunks is None else dict(chunks)
         self.filename:  str    = ""
@@ -107,9 +110,8 @@ class AnvilFile(collections.abc.MutableMapping):
         self.filename = getattr(buff, 'name', None)
 
         log.debug("Loading Region: %s", self.filename)
-        count = self._max_chunks()
-        locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=count)
-        timestamps = numpy.fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=count)
+        locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=self.MAX_CHUNKS)
+        timestamps = numpy.fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=self.MAX_CHUNKS)
         for index, (location, timestamp) in enumerate(zip(locations, timestamps)):
             if location == 0:
                 continue
@@ -118,9 +120,13 @@ class AnvilFile(collections.abc.MutableMapping):
             offset, sector_count = self._unpack_location(location)
             chunk_msg = ("chunk %s at offset %s in %r", pos, offset, self.filename)
 
+            if offset > self.MAX_CHUNK_SIZE * self.MAX_CHUNKS:  # ~1GiB
+                raise RegionError(f"Invalid offset for {chunk_msg[0] % chunk_msg[1:]},"
+                                  f" max is {self.MAX_CHUNK_SIZE * self.MAX_CHUNKS}")
+
             buff.seek(offset)
             try:
-                chunk: RegionChunk = RegionChunk.parse(buff)
+                chunk = RegionChunk.parse(buff)
             except ChunkError as e:
                 log.error(f"Could not parse {chunk_msg[0]}: %s", *chunk_msg[1:], e)
                 continue
@@ -164,9 +170,8 @@ class AnvilFile(collections.abc.MutableMapping):
         if not self:  # no chunks
             return 0
 
-        count = self._max_chunks()
-        locations  = numpy.zeros(count, dtype=f'>u{CHUNK_LOCATION_BYTES}')
-        timestamps = numpy.zeros(count, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}')
+        locations  = numpy.zeros(self.MAX_CHUNKS, dtype=f'>u{CHUNK_LOCATION_BYTES}')
+        timestamps = numpy.zeros(self.MAX_CHUNKS, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}')
 
         offset = locations.nbytes + timestamps.nbytes  # initial, in bytes
         written = 0
@@ -221,11 +226,6 @@ class AnvilFile(collections.abc.MutableMapping):
     def _position_from_index(index) -> u.PosXZ:
         """Helper to get the (x, z) chunk position from a location array index"""
         return u.PosXZ(*reversed(divmod(index, u.CHUNK_GRID[0])))
-
-    @staticmethod
-    def _max_chunks():
-        """Just a helper for DRY"""
-        return u.CHUNK_GRID[0] * u.CHUNK_GRID[1]  # 1024
 
     # ABC boilerplate
     def __getitem__(self, key): return self._chunks[key]
@@ -422,11 +422,16 @@ class RegionChunk(c.Chunk):
         if not hasattr(buff, 'read'):  # assume bytes data
             buff = io.BytesIO(buff)
 
-        length, compression = CHUNK_HEADER.unpack(buff.read(CHUNK_HEADER.size))
-        length -= CHUNK_COMPRESSION_BYTES  # already read
+        header = buff.read(CHUNK_HEADER.size)
+        try:
+            length, compression = CHUNK_HEADER.unpack(header)
+            length -= CHUNK_COMPRESSION_BYTES  # already read
+        except struct.error as e:
+            raise ChunkError(f"chunk header has {len(header)} bytes" +
+                             (f"({''.join(f'{_:x}' for _ in header)})"
+                              if header else "") + f", {e}")
 
         external, compression = cls._unpack_compression(compression)
-
         if compression not in COMPRESSION_TYPES:
             raise ChunkError('Invalid compression type, must be one of'
                              f' {COMPRESSION_TYPES}: {compression}')

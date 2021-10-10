@@ -7,8 +7,11 @@
 Wraps whatever library is used as backend, currently nbtlib
 """
 
-# No __all__, as being a wrapper it exports many names from the backend
+# No __all__, as being a wrapper it exports all imported names from the backend
+# and all the ones defined here
 
+import io
+import zlib
 
 # TODO: (and suggest to nbtlib)
 # - class Root(Compound): transparently handle the unnamed [''] root tag
@@ -73,6 +76,12 @@ class File(Root, _File):
     # Lame overload so it inherits from Root
     __slots__ = ()
 
+    @classmethod
+    def load_mcc(cls, filename):
+        with open(filename, 'rb') as buff:
+            data = io.BytesIO(zlib.decompress(buff.read()))
+        return cls.from_buffer(data)
+
 
 def _pretty(self, indent=4):
     return _serialize_tag(self, indent=indent)
@@ -80,3 +89,7 @@ def _pretty(self, indent=4):
 
 _Base.pretty = _pretty
 String.__str__ = lambda self: str.__str__(self)
+
+
+# Convenience shortcut
+load_mcc = File.load_mcc
