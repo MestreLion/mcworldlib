@@ -13,8 +13,12 @@ __all__ = [
     'MINECRAFT_SAVES_DIR',
     'MCError',
     'Dimension',
+    # 'TPos2D',
+    # 'TPos3D',
     'Pos',
     'PosXZ',
+    # 'ChunkPos',
+    # 'RegionPos',
     'pretty',
 ]
 
@@ -181,7 +185,41 @@ class PosXZ(t.NamedTuple):
     def from_tag(cls, tag: t.Mapping[str, int]) -> 'PosXZ':  # tag: nbt.Compound
         return cls(tag['xPos'], tag['zPos']).as_integers
 
+    @classmethod
+    def from_chunk(cls, cx: int, cz: int) -> 'PosXZ':
+        return cls(*(c * s for c, s in zip((cx, cz), CHUNK_SIZE)))
+
     __repr__ = BasePos.__repr__
+
+
+#################
+# WIP ...
+
+TPos2D = t.Tuple[int, int]
+TPos3D = t.Tuple[float, float, float]
+
+
+class RegionPos(t.NamedTuple):
+    rx: int
+    rz: int
+
+    __repr__ = BasePos.__repr__
+
+    def to_chunk(self, offset: TPos2D = (0, 0)) -> 'ChunkPos':
+        return ChunkPos(*(s * g + o for s, g, o in zip(self, CHUNK_GRID, offset)))
+
+    ...
+
+
+class ChunkPos(t.NamedTuple):
+    cx: int
+    cz: int
+
+    __repr__ = BasePos.__repr__
+
+    ...
+
+########################
 
 
 class LazyFileObjects(abc.MutableMapping):

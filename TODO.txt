@@ -1,0 +1,15 @@
+- Fully support MCC files
+- Region files outside /region: /entities, /poi
+- Custom Dimensions
+- Create ChunkPos and RegionPos, specialized sub-classes of PosXZ assuming (cx, cz) and (rx, rz)
+	- Can PosXZ already assume cx, cz? If so, rename to ChunkPos and adjust formulas
+	- RegionPos.to_chunk(offset:ChunkPos=ChunkPos(0, 0)) -> ChunkPos
+- *Pos*() constructor should accept a single iterable in constructor, like tuple()
+	- Currently Pos(1, 2) is OK, Pos(pos) is not, and vice-versa for tuple()
+	- Method signatures that take a Pos must either be:
+		- Pos.method(otherpos), inconsistent with constructor, or
+		- Pos.method(*otherpos), forcing an un-natural unpacking
+	- Can't (trivially) override typing.NamedTuple.__new__
+- typing.NamedTuple can't be (trivially) subclassed
+	- dataclasses also do not accept single iterable in constructor, and are not isinstance(tuple)
+	- No other is as fast as NamedTuple: https://death.andgravity.com/namedtuples
