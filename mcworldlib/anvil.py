@@ -336,6 +336,7 @@ class Regions(u.LazyFileObjects):
 
     @classmethod
     def load_from_path(cls, path, recursive=False):
+        log.debug("Loading data in %s", path)
         self = cls()
 
         glob = f"{'**/' if recursive else ''}r.*.*.mca"

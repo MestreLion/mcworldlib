@@ -36,6 +36,13 @@ class World(level.Level):
         'dimensions',
     )
 
+    # A.K.A Dimension subdirs
+    _categories = (
+        'region',
+        'entities',
+        'poi'
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.path = ""
@@ -54,10 +61,23 @@ class World(level.Level):
         """Somewhat redundant API shortcut, as for now World *is* a Level"""
         return self.root
 
+    def _category_dict(self, category):
+        return {k: v.get(category, {}) for k, v in self.dimensions.items()}
+
     @property
     def regions(self):
-        """Shortcut for OverWorld regions"""
-        return self.dimensions.get(u.Dimension.OVERWORLD, {})
+        """Re-shaped dimensions dictionary containing only Region data"""
+        return self._category_dict('region')
+
+    @property
+    def entities(self):
+        """Re-shaped dimensions dictionary containing only Entities data"""
+        return self._category_dict('region')
+
+    @property
+    def poi(self):
+        """Re-shaped dimensions dictionary containing only Point-of-Interest data"""
+        return self._category_dict('poi')
 
     @property
     def chunk_count(self):
@@ -109,6 +129,8 @@ class World(level.Level):
 
     @classmethod
     def load(cls, path, progress=True, **kwargs):
+        self: 'World'
+
         # /level.dat and directory path
         if hasattr(path, 'name'):
             # Assume file-like buffer to level.dat
@@ -134,12 +156,13 @@ class World(level.Level):
 
         log.info("Loading World '%s': %s", self.name, self.path)
 
-        # Dimensions and their Region files
+        # Dimensions and their Region files and associated data
         # /region, /DIM-1/region, /DIM1/region
         # TODO: Read custom dimensions! /dimensions/<prefix>/<name>/region
         for dimension in u.Dimension:
-            self.dimensions[dimension] = anvil.Regions.load(self, dimension, 'region')
-            # ...
+            self.dimensions[dimension] = {}
+            for category in self._categories:
+                self.dimensions[dimension][category] = anvil.Regions.load(self, dimension, category)
 
         # ...
 
