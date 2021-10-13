@@ -40,14 +40,14 @@ class Root(Compound):
     # __repr__()
 
     __slots__ = ()
-    _root_name: Path = None
 
-    def __new__(cls, *args, **kwargs):
-        self = super().__new__(cls, *args, **kwargs)
-        # If a subclass defines _root_name, use it instead of the default
-        if cls._root_name:
-            cls.root_name = property(lambda _: _._root_name)
-        return self
+    @property
+    def data_root(self):
+        """The data root tag"""
+        root = self.root
+        if len(root) == 2 and 'Level' in root:  # 'region' subdir/category
+            return root['Level']
+        return root
 
     # The following are copy-pasted from nbtlib.File
 

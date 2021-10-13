@@ -21,7 +21,6 @@ from . import util as u
 # TODO: create an nbt.Schema for it
 class Chunk(nbt.Root):
     __slots__ = ()
-    _root_name = nbt.Path("''.Level")
 
     BS_MIN_BITS = 4  # BlockState index minimum bits
     BS_INDEXES = u.CHUNK_SIZE[0] * u.CHUNK_SIZE[1] * u.SECTION_HEIGHT  # 16 * 16 * 16 = 4096

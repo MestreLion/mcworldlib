@@ -29,7 +29,7 @@ class BaseEntity(nbt.Compound):
 class Entity(BaseEntity):
     """Base for all Entities with id"""
     __slots__ = ()
-    entity_id = None
+    entity_id: str = ""
 
     @property
     def name(self):

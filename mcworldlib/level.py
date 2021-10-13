@@ -21,7 +21,11 @@ class Level(nbt.File):
     __slots__ = (
         'player',
     )
-    _root_name = nbt.Path("''.Data")
+
+    @property
+    def root_name(self):
+        """The name of the root nbt tag."""
+        return nbt.Path("''.Data")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
