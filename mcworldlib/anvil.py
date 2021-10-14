@@ -215,14 +215,14 @@ class AnvilFile(collections.abc.MutableMapping):
     # to add them to PosXZ.as_/from_. Best to keep region-related formulas here
 
     @staticmethod
-    def _index_from_position(pos: u.PosXZ) -> int:
-        """Helper to get the location array index from a (x, z) chunk position"""
-        return pos.x + u.CHUNK_GRID[0] * pos.z
+    def _index_from_position(pos: u.ChunkPos) -> int:
+        """Helper to get the location array index from a (cxr, czr) chunk offset"""
+        return pos.cx + u.CHUNK_GRID[0] * pos.cz
 
     @staticmethod
-    def _position_from_index(index) -> u.PosXZ:
-        """Helper to get the (x, z) chunk position from a location array index"""
-        return u.PosXZ(*reversed(divmod(index, u.CHUNK_GRID[0])))
+    def _position_from_index(index) -> u.ChunkPos:
+        """Helper to get the (cxr, czr) chunk offset from a location array index"""
+        return u.ChunkPos(*reversed(divmod(index, u.CHUNK_GRID[0])))
 
     # ABC boilerplate
     def __getitem__(self, key): return self._chunks[key]
@@ -271,8 +271,8 @@ class RegionFile(AnvilFile):
     # noinspection PyTypeChecker
     def __init__(self, **kw):
         super().__init__(**kw)
-        self.regions: Regions = None
-        self.pos:     u.PosXZ = None
+        self.regions: Regions     = None
+        self.pos:     u.RegionPos = None
 
     @property
     def world(self):
@@ -287,12 +287,12 @@ class RegionFile(AnvilFile):
         return getattr(self.regions, 'category', "")
 
     @classmethod
-    def pos_from_filename(cls, filename) -> u.PosXZ:
+    def pos_from_filename(cls, filename) -> u.RegionPos:
         m = re.fullmatch(cls._re_filename, os.path.basename(filename))
         if not m:
             raise RegionError(f"Not a valid Region filename: {filename}")
 
-        return u.PosXZ(*map(int, m.groups()))
+        return u.RegionPos(*map(int, m.groups()))
 
 
 class Regions(u.LazyFileObjects):
@@ -344,7 +344,7 @@ class Regions(u.LazyFileObjects):
             if not filepath.is_file():
                 continue
             try:
-                pos: u.PosXZ = RegionFile.pos_from_filename(filepath)
+                pos = RegionFile.pos_from_filename(filepath)
             except RegionError as e:
                 log.warning("Ignoring file: %s", e)
                 continue
@@ -403,7 +403,7 @@ class RegionChunk(c.Chunk):
     def __init__(self, *args, **tags):
         super().__init__(*args, **tags)
         self.region:        RegionFile  = None
-        self.pos:           u.PosXZ     = None
+        self.pos:           u.ChunkPos  = None
         self.offset:        int         = 0  # Set by AnvilFile.parse()
         self.sector_count:  int         = 0
         self.timestamp:     int         = 0  # Also set by AnvilFile.parse()
@@ -413,7 +413,7 @@ class RegionChunk(c.Chunk):
 
     @property
     def world_pos(self):
-        return u.PosXZ.from_tag(self.root)
+        return self.region.pos.to_chunk(self.pos)
 
     @classmethod
     def parse(cls, buff, *args, **kwargs) -> 'RegionChunk':
@@ -481,6 +481,7 @@ class RegionChunk(c.Chunk):
     def __str__(self):
         """Just like NTBExplorer!"""
         return (f"<Chunk [{', '.join(f'{_:2}' for _ in self.pos)}]"
+                f" from Region {self.region.pos}"
                 f" in world at {self.world_pos}"
                 f" saved on {u.isodate(self.timestamp)}>")
 

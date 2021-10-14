@@ -13,12 +13,11 @@ __all__ = [
     'MINECRAFT_SAVES_DIR',
     'MCError',
     'Dimension',
-    # 'TPos2D',
-    # 'TPos3D',
+    'TPos2D',
+    'TPos3D',
     'Pos',
-    'PosXZ',
-    # 'ChunkPos',
-    # 'RegionPos',
+    'ChunkPos',
+    'RegionPos',
     'pretty',
 ]
 
@@ -37,9 +36,14 @@ if platform.system() == 'Windows':
 else:
     MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
 
-CHUNK_GRID = (32, 32)  # (x, z) chunks in each region file = 1024 chunks per region
-CHUNK_SIZE = (16, 16)  # (x, z) blocks in each chunk
+CHUNK_GRID = (32, 32)  # (X, Z) chunks in each region file = 1024 chunks per region
+CHUNK_SIZE = (16, 16)  # (X, Z) blocks in each chunk
 SECTION_HEIGHT = 16    # chunk section height in blocks
+
+# Pos stuff...
+TPos2D: 't.TypeAlias' = t.Tuple[int, int]
+TPos3D: 't.TypeAlias' = t.Tuple[float, float, float]
+
 
 
 class MCError(Exception):
@@ -76,11 +80,12 @@ class BasePos(tuple):
     not their superclass.
     """
     @property
-    def as_integers(self) -> tuple:  # actually t.Union['Pos', 'PosXZ']
+    def to_integers(self) -> tuple:
+        # actually t.Union['Pos', 'ChunkPos', 'RegionPos'], and only used by Pos
         """Coordinates truncated to integers"""
         return self.__class__(*map(int, self))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         # works for __str__ too, as tuple does not define __str__
         return '(' + ','.join(f"{int(_): {len(self)+1}}" for _ in self) + ')'
 
@@ -92,12 +97,8 @@ class Pos(t.NamedTuple):
     y: int
     z: int
 
-    # Rationale for properties, prefixes and return types (just a draft):
-    # If meant for explicit type conversion: method to_*()
-    # If just presenting the same position in other format/reference: property as_*
-    # If ready to be used elsewhere, with little point remaining Pos: -> tuple
-
-    as_integers = BasePos.as_integers
+    to_integers = BasePos.to_integers
+    __repr__ = BasePos.__repr__
 
     @property
     def as_yzx(self) -> tuple: return self.y, self.x, self.z  # section block notation
@@ -107,96 +108,37 @@ class Pos(t.NamedTuple):
 
     @property
     def as_section_block(self) -> tuple:
-        ipos = self.as_integers  # Required by mod
+        ipos = self.to_integers  # Required by mod
         return (ipos.y % SECTION_HEIGHT,
                 ipos.z % CHUNK_SIZE[1],
                 ipos.x % CHUNK_SIZE[0])
 
     @property
-    def as_section(self) -> int:
+    def section(self) -> int:
         return self.y // SECTION_HEIGHT
 
     @property
-    def as_chunk(self) -> 'PosXZ':
-        """(cx, cz) absolute coordinates of the chunk containing this position"""
-        return self.to_posxz().as_chunk
+    def column(self) -> 'TPos2D':
+        return self.x, self.z
 
     @property
-    def as_region(self) -> 'PosXZ':
-        """(rx, rz) absolute coordinates of the region containing this position"""
-        return self.to_posxz().as_region
-
-    @property
-    def as_chunk_pos(self) -> 'PosXZ':
+    def offset(self) -> 'TPos2D':
         """(xc, zc) position coordinates relative to its chunk"""
-        return self.to_posxz().as_chunk_pos
+        # noinspection PyTypeChecker
+        return tuple(c % s for c, s in zip(self.column, CHUNK_SIZE))
 
     @property
-    def as_region_chunk(self) -> 'PosXZ':
-        """(cxr, czr) chunk position coordinates relative to its region"""
-        return self.to_posxz().as_region_chunk
+    def chunk(self) -> 'ChunkPos':
+        return ChunkPos(*(c // s for c, s in zip(self.column, CHUNK_SIZE)))
 
-    def to_posxz(self) -> 'PosXZ':
-        return PosXZ(self.x, self.z)
-    as_xz = property(to_posxz)
+    @property
+    def region(self) -> 'RegionPos':
+        """(rx, rz) absolute coordinates of the region containing this position"""
+        return self.chunk.region
 
     @classmethod
     def from_tag(cls, tag: t.Mapping[str, list]) -> 'Pos':  # tag: nbt.Compound
-        return cls(*tag['Pos']).as_integers
-
-    __repr__ = BasePos.__repr__
-
-
-class PosXZ(t.NamedTuple):
-    x: int
-    z: int
-
-    as_integers = BasePos.as_integers
-
-    @property
-    def as_chunk(self) -> 'PosXZ':
-        """(cx, cz) absolute coordinates of the chunk containing this position"""
-        return self.__class__(*(c // s for c, s in zip(self, CHUNK_SIZE)))
-        # or:  PosXZ(self.x // CHUNK_SIZE[0], self.z // CHUNK_SIZE[1])
-
-    @property
-    def as_region(self) -> 'PosXZ':
-        """(rx, rz) absolute coordinates of the region containing this position"""
-        return self.__class__(*(c // g for c, g in zip(self.as_chunk, CHUNK_GRID)))
-        # or:  PosXZ(*(c // (s * g) for c, s, g in zip(self, CHUNK_SIZE, CHUNK_GRID)))
-
-    @property
-    def as_chunk_pos(self) -> 'PosXZ':
-        """(xc, zc) position coordinates relative to its chunk"""
-        return self.__class__(*(c % s for c, s in zip(self.as_integers, CHUNK_SIZE)))
-        # or:  PosXZ(int(self.x) % CHUNK_SIZE[0], int(self.z) % CHUNK_SIZE[1])
-
-    @property
-    def as_region_chunk(self) -> 'PosXZ':
-        """(cxr, czr) chunk position coordinates relative to its region"""
-        return self.__class__(*(c % g for c, g in zip(self.as_chunk, CHUNK_GRID)))
-        # or:  PosXZ(*((c // s) % g for c, s, g in zip(self, CHUNK_SIZE, CHUNK_GRID)))
-
-    def to_pos(self, y: int = 0) -> Pos:
-        return Pos(self.x, y, self.z)
-    to_xyz = to_pos
-
-    @classmethod
-    def from_tag(cls, tag: t.Mapping[str, int]) -> 'PosXZ':  # tag: nbt.Compound
-        return cls(tag['xPos'], tag['zPos']).as_integers
-
-    @classmethod
-    def from_chunk(cls, cx: int, cz: int) -> 'PosXZ':
-        return cls(*(c * s for c, s in zip((cx, cz), CHUNK_SIZE)))
-
-    __repr__ = BasePos.__repr__
-
-
-#################
-# WIP ...
-
-TPos2D = t.Tuple[int, int]
-TPos3D = t.Tuple[float, float, float]
+        return cls(*tag['Pos']).to_integers
 
 
 class RegionPos(t.NamedTuple):
@@ -208,8 +150,6 @@ class RegionPos(t.NamedTuple):
     def to_chunk(self, offset: TPos2D = (0, 0)) -> 'ChunkPos':
         return ChunkPos(*(s * g + o for s, g, o in zip(self, CHUNK_GRID, offset)))
 
-    ...
-
 
 class ChunkPos(t.NamedTuple):
     cx: int
@@ -217,10 +157,29 @@ class ChunkPos(t.NamedTuple):
 
     __repr__ = BasePos.__repr__
 
-    ...
+    @property
+    def offset(self) -> 'ChunkPos':
+        """(cxr, czr) chunk position coordinates relative to its region.
 
-########################
+        If you also need region coordinates, consider using .region_and_offset()
+        that efficiently calculates both.
+        """
+        return self.__class__(*(c % g for c, g in zip(self, CHUNK_GRID)))
 
+    @property
+    def region(self) -> RegionPos:
+        """(rx, rz) absolute coordinates of the region containing this chunk.
+
+        If you also need the chunk offset, consider using .region_and_offset()
+        that efficiently calculates both.
+        """
+        return RegionPos(*(c // g for c, g in zip(self, CHUNK_GRID)))
+
+    @property
+    def region_and_offset(self) -> t.Tuple[RegionPos, 'ChunkPos']:
+        """((rx, rz), (cxr, czr)) region and chunk offset coordinates of this chunk"""
+        region, chunk = zip(*(divmod(c, g) for c, g in zip(self, CHUNK_GRID)))
+        return RegionPos(*region), self.__class__(*chunk)
 
 class LazyFileObjects(abc.MutableMapping):
     """Keyed collection of objects loaded from files lazily on access"""
