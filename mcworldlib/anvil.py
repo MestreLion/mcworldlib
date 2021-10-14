@@ -295,7 +295,7 @@ class RegionFile(AnvilFile):
         return u.RegionPos(*map(int, m.groups()))
 
 
-class Regions(u.LazyFileObjects):
+class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
     """Collection of RegionFiles"""
     # If Dimension becomes a 1st class citizen, world can be read from dimension
     collective = 'regions'
@@ -306,7 +306,7 @@ class Regions(u.LazyFileObjects):
         'path',
     )
 
-    def __init__(self, regions: dict = None):
+    def __init__(self, regions: 'Regions' = None):
         super().__init__(regions)
         self.path      = ""
         self.dimension = None
@@ -319,12 +319,14 @@ class Regions(u.LazyFileObjects):
             return ""
         return os.path.basename(self.path)
 
-    def _load_lazy_object(self, item: tuple):
-        pos, path = item
+    def _is_loaded(self, pos, item) -> bool:
+        return isinstance(item, RegionFile)
+
+    def _load_item(self, pos: u.TPos2D, path: u.AnyPath):
         region = RegionFile.load(path)
         region.regions = self
-        region.pos = pos
-        return region
+        region.pos = u.RegionPos(*pos)
+        return region.pos, region
 
     @classmethod
     def load(cls, world, dimension, category):
@@ -348,7 +350,7 @@ class Regions(u.LazyFileObjects):
             except RegionError as e:
                 log.warning("Ignoring file: %s", e)
                 continue
-            self[pos] = pos, filepath
+            self[pos] = filepath
 
         return self
 

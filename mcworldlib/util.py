@@ -21,7 +21,6 @@ __all__ = [
     'pretty',
 ]
 
-import collections.abc as abc
 import enum
 import os.path
 import platform
@@ -44,6 +43,12 @@ SECTION_HEIGHT = 16    # chunk section height in blocks
 TPos2D: 't.TypeAlias' = t.Tuple[int, int]
 TPos3D: 't.TypeAlias' = t.Tuple[float, float, float]
 
+# Somewhat general, but used only by LazyLoadMap
+KT = t.TypeVar('KT', bound=t.Hashable)
+VT = t.TypeVar('VT')
+Pos2DT = t.TypeVar('Pos2DT', bound=TPos2D)
+AnyPath = t.Union[str, bytes, os.PathLike]
+LazyFileT = t.Union[AnyPath, VT]
 
 
 class MCError(Exception):
@@ -181,35 +186,55 @@ class ChunkPos(t.NamedTuple):
         region, chunk = zip(*(divmod(c, g) for c, g in zip(self, CHUNK_GRID)))
         return RegionPos(*region), self.__class__(*chunk)
 
-class LazyFileObjects(abc.MutableMapping):
-    """Keyed collection of objects loaded from files lazily on access"""
+    @classmethod
+    def from_nbt_tags(cls, tag: t.Mapping[str, int]) -> 'ChunkPos':
+        # tag: nbt.Compound[str, nbt.Int]
+        #      cls(*(int(tag[f'{_}Pos']) for _ in ('x', 'z')))
+        return cls(int(tag['xPos']),
+                   int(tag['zPos']))
+
+    @classmethod
+    def from_nbt_array(cls, tag: t.Mapping[str, t.Iterable[int]]) -> 'ChunkPos':
+        # tag: nbt.Compound[str, nbt.IntArray]
+        return cls(*map(int, tag['Position']))
+
+
+class LazyLoadMap(t.MutableMapping[KT, VT]):
+    """Mapping of objects lazily loaded on access"""
     __slots__ = (
         '_items',
-        '_loaded',
     )
     collective: str = 'items'  # Collective noun for the items, used in __repr__()
 
-    def __init__(self, items: t.MutableMapping[t.Any, t.Any] = None):
-        self._items:       dict = {} if items is None else dict(items)
-        self._loaded:      set  = set(self._items.keys())
+    def __init__(self, items: t.Optional['LazyLoadMap'] = None) -> None:
+        # As implementations use KT=TPos2D, no benefit in allowing **kwargs
+        self._items: t.Dict[KT, VT] = {}
+        if items is not None:
+            self._items.update(items)
 
-    def _load_lazy_object(self, item: t.Any) -> object:
+    def _is_loaded(self, key: KT, item: VT) -> bool:
         raise NotImplementedError
 
-    def __getitem__(self, key):
-        item: t.Any = self._items[key]
-        if key in self._loaded:
-            return item
-        obj: object = self._load_lazy_object(item)
-        self._items[key] = obj
-        self._loaded.add(key)  # mark it as loaded
-        return obj
+    def _load_item(self, key: KT, item: VT) -> t.Optional[t.Tuple[KT, VT]]:
+        raise NotImplementedError
+
+    def __getitem__(self, key: KT) -> VT:
+        if key not in self._items:
+            raise KeyError(key)
+        value: VT = self._items[key]
+        if self._is_loaded(key, value):
+            return value
+        item = self._load_item(key, value)
+        if item is not None:
+            key, value = item
+            self[key] = value
+        return value
 
     # ABC boilerplate
     def __iter__(self):            return iter(self._items)
     def __len__(self):             return len(self._items)
-    def __setitem__(self, key, v): self._items[key] = v; self._loaded.discard(key)
-    def __delitem__(self, key):    del self._items[key]; self._loaded.discard(key)
+    def __setitem__(self, key, v): self._items[key] = v
+    def __delitem__(self, key):    del self._items[key]
     def __contains__(self, key):   return key in self._items  # optional
 
     def pretty(self, indent=4):
@@ -221,6 +246,14 @@ class LazyFileObjects(abc.MutableMapping):
 
     def __repr__(self):
         return f'<{self.__class__.__name__}({len(self)} {self.collective})>'
+
+
+class LazyLoadFileMap(LazyLoadMap[Pos2DT, LazyFileT]):
+    def _is_loaded(self, key: Pos2DT, item: LazyFileT) -> bool:
+        raise NotImplementedError
+
+    def _load_item(self, key: Pos2DT, item: AnyPath) -> t.Optional[t.Tuple[Pos2DT, VT]]:
+        raise NotImplementedError
 
 
 def isodate(secs: int) -> str:
