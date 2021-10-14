@@ -25,17 +25,20 @@ class Chunk(nbt.Root):
     BS_MIN_BITS = 4  # BlockState index minimum bits
     BS_INDEXES = u.CHUNK_SIZE[0] * u.CHUNK_SIZE[1] * u.SECTION_HEIGHT  # 16 * 16 * 16 = 4096
 
+    @classmethod
+    def parse(cls, *args, **kwargs):
+        self = super().parse(*args, **kwargs)
+        for i, e in enumerate(self.entities or []):
+            self.entities[i] = entity.Entity.subclass(e)
+        return self
+
     @property
     def entities(self):
-        return self.root['Entities']
+        return self.data_root.get('Entities', None)
 
-    @classmethod
-    def parse(cls, buff, *args, **kwargs):
-        self = super().parse(buff, *args, **kwargs)
-        self.root['Entities'] = nbt.List[entity.Entity](
-            entity.Entity.subclass(_) for _ in self.root.get('Entities', ())
-        )
-        return self
+    @entities.setter
+    def entities(self, value: nbt.List[nbt.Compound]):
+        self.data_root['Entities'] = value
 
     def get_blocks(self):
         """Yield a (Y, Palette, BlockState Indexes Array) tuple for every chunk section.
@@ -44,7 +47,7 @@ class Chunk(nbt.Root):
         Palette, Indexes: See get_section_blocks()
         """
         blocks = {}
-        for section in self.root['Sections']:
+        for section in self.data_root['Sections']:
             # noinspection PyPep8Naming
             Y = int(section['Y'])
             palette, indexes = self.get_section_blocks(Y, _section=section)
@@ -62,7 +65,7 @@ class Chunk(nbt.Root):
         """
         section = _section
         if not section:
-            for section in self.root.get('Sections', []):
+            for section in self.data_root.get('Sections', []):
                 if section.get('Y') == Y:
                     break
             else:
