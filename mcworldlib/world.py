@@ -72,7 +72,7 @@ class World(level.Level):
     @property
     def entities(self):
         """Re-shaped dimensions dictionary containing only Entities data"""
-        return self._category_dict('region')
+        return self._category_dict('entities')
 
     @property
     def poi(self):
@@ -80,7 +80,7 @@ class World(level.Level):
         return self._category_dict('poi')
 
     @property
-    def chunk_count(self):
+    def chunk_count(self):  # FIXME!
         return sum(len(_) for _ in self.regions)
 
     def get_chunks(self, progress=True, dimension=u.Dimension.OVERWORLD):
@@ -93,7 +93,7 @@ class World(level.Level):
                 yield chunk
 
     def get_all_chunks(self, progress=True):
-        """Yield a (dimension, chunk) tuple for all chunks in all dimensions"""
+        """Yield a (dimension, category, chunk) tuple for all chunks in all dimensions"""
         dimensions = self.dimensions.keys()
         if progress:
             dimensions = tqdm.tqdm(dimensions)
@@ -101,19 +101,32 @@ class World(level.Level):
             for chunk in self.get_chunks(progress=progress, dimension=dimension):
                 yield dimension, chunk
 
-    def get_chunk_at(self, pos, dimension=u.Dimension.OVERWORLD):
-        if not isinstance(pos, u.Pos):
-            pos = u.Pos(*pos)
-        return self.dimensions[dimension][pos.as_region][pos.as_region_chunk]
+    def get_chunk(self, chunk_coords: u.TPos2D,
+                  dimension=u.Dimension.OVERWORLD, category='region') -> anvil.RegionChunk:
+        """Return the chunk at coordinates (cx, cz)"""
+        if not isinstance(chunk_coords, u.ChunkPos):
+            chunk_coords = u.ChunkPos(*chunk_coords)
+        region, chunk = chunk_coords.region_and_offset
+        try:
+            return self.dimensions[dimension][category][region][chunk]
+        except KeyError:
+            raise anvil.ChunkError(f"Chunk does not exist: {chunk_coords}"
+                                   f" [Region {region}, offset {chunk}]")
 
-    def get_block_at(self, pos, dimension=u.Dimension.OVERWORLD):
-        if not isinstance(pos, u.Pos):
-            pos = u.Pos(*pos)
-        chunk = self.get_chunk_at(pos, dimension)
-        palette, indexes = chunk.get_section_blocks(pos.as_section)
+    def get_chunk_at(self, coords: u.TPos3D,
+                     dimension=u.Dimension.OVERWORLD, category='region') -> anvil.RegionChunk:
+        if not isinstance(coords, u.Pos):
+            coords = u.Pos(*coords)
+        return self.get_chunk(coords.chunk, dimension=dimension, category=category)
+
+    def get_block_at(self, coords: u.TPos3D, dimension=u.Dimension.OVERWORLD):
+        if not isinstance(coords, u.Pos):
+            coords = u.Pos(*coords)
+        chunk = self.get_chunk_at(coords, dimension=dimension, category='region')
+        palette, indexes = chunk.get_section_blocks(coords.section)
         if not palette:
             return None
-        return palette[int(indexes[pos.as_section_block])]
+        return palette[int(indexes[coords.as_section_block])]
 
     def get_player(self, name=None):
         """Get a named player (server) or the world default player"""
