@@ -83,9 +83,9 @@ class World(level.Level):
     def chunk_count(self):  # FIXME!
         return sum(len(_) for _ in self.regions)
 
-    def get_chunks(self, progress=True, dimension=u.Dimension.OVERWORLD):
-        """Yield all chunks in a given dimension, Overworld by default"""
-        regions = self.dimensions[dimension].values()
+    def get_chunks(self, progress=True, dimension=u.Dimension.OVERWORLD, category='region'):
+        """Yield all chunks in a given dimension and category, Overworld Regions by default"""
+        regions = self.dimensions[dimension][category].values()
         if progress:
             regions = tqdm.tqdm(regions)
         for region in regions:
@@ -98,8 +98,11 @@ class World(level.Level):
         if progress:
             dimensions = tqdm.tqdm(dimensions)
         for dimension in dimensions:
-            for chunk in self.get_chunks(progress=progress, dimension=dimension):
-                yield dimension, chunk
+            for category in self._categories:
+                for chunk in self.get_chunks(progress=progress,
+                                             dimension=dimension,
+                                             category=category):
+                    yield dimension, category, chunk
 
     def get_chunk(self, chunk_coords: u.TPos2D,
                   dimension=u.Dimension.OVERWORLD, category='region') -> anvil.RegionChunk:
