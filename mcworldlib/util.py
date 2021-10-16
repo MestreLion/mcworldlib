@@ -272,9 +272,11 @@ def now() -> int:
     return int(time.time())
 
 
-def pretty(obj, indent=4):
+def pretty(obj, indent=4) -> None:
     """Prints a pretty representation of obj"""
     try:
-        print(obj.pretty(indent=indent))
+        f = obj.pretty
     except AttributeError:
-        pprint.pprint(obj, indent=indent)
+        return pprint.pprint(obj, indent=indent)
+
+    print(f(indent=indent))
