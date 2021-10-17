@@ -22,6 +22,7 @@ __all__ = [
 ]
 
 import enum
+import functools
 import os.path
 import platform
 import pprint
@@ -91,9 +92,14 @@ class BasePos(tuple):
         """Coordinates truncated to integers"""
         return self.__class__(*map(int, self))
 
-    def __repr__(self) -> str:
-        # works for __str__ too, as tuple does not define __str__
-        return '(' + ','.join(f"{int(_): {len(self)+1}}" for _ in self) + ')'
+    def __repr__(self, width: t.Union[int, t.Iterable[int]] = 3) -> str:
+        # Example usage:
+        # __repr__ = functools.partialmethod(BasePos.__repr__, width=2)
+        # If this ever becomes a true superclass, convert width to class attribute
+        # __repr__ works for __str__ too only because tuple does not define __str__
+        if isinstance(width, int):
+            width = (width,) * len(self)
+        return '(' + ','.join(f"{int(c): {w}}" for c, w in zip(self, width)) + ')'
 
 
 class Pos(t.NamedTuple):
@@ -104,7 +110,7 @@ class Pos(t.NamedTuple):
     z: int
 
     to_integers = BasePos.to_integers
-    __repr__ = BasePos.__repr__
+    __repr__ = functools.partialmethod(BasePos.__repr__, width=(5, 3, 5))
 
     @property
     def as_yzx(self) -> tuple: return self.y, self.x, self.z  # section block notation
@@ -151,7 +157,7 @@ class RegionPos(t.NamedTuple):
     rx: int
     rz: int
 
-    __repr__ = BasePos.__repr__
+    __repr__ = functools.partialmethod(BasePos.__repr__, width=3)
 
     def to_chunk(self, offset: TPos2D = (0, 0)) -> 'ChunkPos':
         return ChunkPos(*(s * g + o for s, g, o in zip(self, CHUNK_GRID, offset)))
@@ -161,7 +167,7 @@ class ChunkPos(t.NamedTuple):
     cx: int
     cz: int
 
-    __repr__ = BasePos.__repr__
+    __repr__ = functools.partialmethod(BasePos.__repr__, width=4)
 
     @property
     def offset(self) -> 'ChunkPos':

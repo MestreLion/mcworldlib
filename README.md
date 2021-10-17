@@ -127,13 +127,13 @@ A `RegionFile` is a dictionary of chunks, and each `Chunk` contains its NBT data
 >>> region = regions[-2, 0]
 >>> mc.pretty(region)
 {
-    ( 18,  0): <Chunk [18,  0] from Region ( -2,  0) in world at (-46,  0) saved on 2021-10-11 16:39:17>,
-    ( 28,  0): <Chunk [28,  0] from Region ( -2,  0) in world at (-36,  0) saved on 2021-10-11 16:40:50>,
-    ( 29,  0): <Chunk [29,  0] from Region ( -2,  0) in world at (-35,  0) saved on 2021-10-11 16:40:50>,
+    (  18,   0): <Chunk [18,  0] from Region ( -2,  0) in world at ( -46,   0) saved on 2021-10-11 16:39:17>,
+    (  28,   0): <Chunk [28,  0] from Region ( -2,  0) in world at ( -36,   0) saved on 2021-10-11 16:40:50>,
+    (  29,   0): <Chunk [29,  0] from Region ( -2,  0) in world at ( -35,   0) saved on 2021-10-11 16:40:50>,
     ...
-    ( 29, 31): <Chunk [29, 31] from Region ( -2,  0) in world at (-35, 31) saved on 2021-10-11 16:40:14>,
-    ( 30, 31): <Chunk [30, 31] from Region ( -2,  0) in world at (-34, 31) saved on 2021-10-11 16:40:14>,
-    ( 31, 31): <Chunk [31, 31] from Region ( -2,  0) in world at (-33, 31) saved on 2021-10-11 16:40:14>
+    (  29,  31): <Chunk [29, 31] from Region ( -2,  0) in world at ( -35,  31) saved on 2021-10-11 16:40:14>,
+    (  30,  31): <Chunk [30, 31] from Region ( -2,  0) in world at ( -34,  31) saved on 2021-10-11 16:40:14>,
+    (  31,  31): <Chunk [31, 31] from Region ( -2,  0) in world at ( -33,  31) saved on 2021-10-11 16:40:14>
 }
 
 >>> chunk = region[30, 31]
@@ -171,9 +171,9 @@ You can fetch a chunk by several means, using for example:
 ... ):
 ...     print(chunk)
 ...
-<Chunk [30, 21] from Region ( -2,  0) in world at (-34, 21) saved on 2021-10-11 16:40:50>
-<Chunk [ 6,  6] from Region (  0,  0) in world at (  6,  6) saved on 2021-10-11 16:40:50>
-<Chunk [18,  0] from Region ( -1,  0) in world at (-14,  0) saved on 2021-10-11 16:40:48>
+<Chunk [30, 21] from Region ( -2,  0) in world at ( -34,  21) saved on 2021-10-11 16:40:50>
+<Chunk [ 6,  6] from Region (  0,  0) in world at (   6,   6) saved on 2021-10-11 16:40:50>
+<Chunk [18,  0] from Region ( -1,  0) in world at ( -14,   0) saved on 2021-10-11 16:40:48>
 
 ```
 
