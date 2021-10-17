@@ -10,8 +10,8 @@ Wraps whatever library is used as backend, currently nbtlib
 # No __all__, as being a wrapper it exports all imported names from the backend
 # and all the ones defined here
 
-import io
-import zlib
+import io as _io
+import zlib as _zlib
 
 # TODO: (and suggest to nbtlib)
 # - class Root(Compound): transparently handle the unnamed [''] root tag
@@ -24,9 +24,10 @@ import zlib
 # - String.__str__() should not quote or escape
 # noinspection PyProtectedMember
 from nbtlib.tag import Base as _Base   # Not in nbtlib.tag.__all__
-from nbtlib.tag import *  # @UnusedWildImport
+from nbtlib.tag import *
 from nbtlib.nbt import File as _File
-from nbtlib.path import Path  # @UnusedImport
+# noinspection PyUnresolvedReferences
+from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
 
@@ -79,7 +80,7 @@ class File(Root, _File):
     @classmethod
     def load_mcc(cls, filename):
         with open(filename, 'rb') as buff:
-            data = io.BytesIO(zlib.decompress(buff.read()))
+            data = _io.BytesIO(_zlib.decompress(buff.read()))
         return cls.from_buffer(data)
 
 

@@ -60,6 +60,7 @@ class MCError(Exception):
 
 
 class Dimension(enum.Enum):
+    # Changed from IDs to namespace in Minecraft 1.16 (2230 < DataVersion < 2586)
     OVERWORLD  =  0
     THE_NETHER = -1
     THE_END    =  1
@@ -79,7 +80,7 @@ class Dimension(enum.Enum):
 
 
 class BasePos(tuple):
-    """Common methods for Pos and PosXZ
+    """Common methods for *Pos classes
 
     typing.NamedTuple has issues with multiple inheritance, so formally this is
     not their superclass.

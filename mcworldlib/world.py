@@ -93,7 +93,7 @@ class World(level.Level):
                 yield chunk
 
     def get_all_chunks(self, progress=True):
-        """Yield a (dimension, category, chunk) tuple for all chunks in all dimensions"""
+        """Yield a (dimension, category, chunk) tuple for all chunks in all dimensions and categories"""
         dimensions = self.dimensions.keys()
         if progress:
             dimensions = tqdm.tqdm(dimensions)
