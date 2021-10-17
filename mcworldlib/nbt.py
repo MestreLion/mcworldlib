@@ -25,7 +25,8 @@ import zlib as _zlib
 # noinspection PyProtectedMember
 from nbtlib.tag import Base as _Base   # Not in nbtlib.tag.__all__
 from nbtlib.tag import *
-from nbtlib.nbt import File as _File
+# noinspection PyUnresolvedReferences
+from nbtlib.nbt import File as _File, load as load_dat  # could be File.load
 # noinspection PyUnresolvedReferences
 from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
@@ -76,6 +77,11 @@ class Root(Compound):
 class File(Root, _File):
     # Lame overload so it inherits from Root
     __slots__ = ()
+
+    @classmethod
+    def load(cls, filename, gzipped=True, *args, **kwargs):
+        # make gzipped an optional argument, defaulting to True
+        return super().load(filename, gzipped=gzipped, *args, **kwargs)
 
     @classmethod
     def load_mcc(cls, filename):
