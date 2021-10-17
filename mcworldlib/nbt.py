@@ -84,13 +84,11 @@ class File(Root, _File):
         return cls.from_buffer(data)
 
 
-def _pretty(self, indent=4):
-    return _serialize_tag(self, indent=indent)
+# Add .pretty() method to all NBT tags
+_Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 
-
-_Base.pretty = _pretty
+# Fix String.__str__. Not needed in modern nbtlib versions
 String.__str__ = lambda self: str.__str__(self)
-
 
 # Convenience shortcut
 load_mcc = File.load_mcc
