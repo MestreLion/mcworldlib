@@ -37,7 +37,7 @@ class Entity(BaseEntity):
 
     @property
     def pos(self):
-        return u.Pos(*self['Pos'])
+        return u.Pos.from_tag(self)
 
     @classmethod
     def subclass(cls, tag):

@@ -15,6 +15,7 @@ __all__ = [
     'Dimension',
     'TPos2D',
     'TPos3D',
+    'BasePos',
     'Pos',
     'ChunkPos',
     'RegionPos',
@@ -41,15 +42,21 @@ CHUNK_SIZE = (16, 16)  # (X, Z) blocks in each chunk
 SECTION_HEIGHT = 16    # chunk section height in blocks
 
 # Pos stuff...
-TPos2D: 't.TypeAlias' = t.Tuple[int, int]
-TPos3D: 't.TypeAlias' = t.Tuple[float, float, float]
+NumT = t.TypeVar('NumT', int, float)
+TPos:   't.TypeAlias' = t.Tuple[NumT, ...]            # Any 2D/3D *Pos
+TPos2D: 't.TypeAlias' = t.Tuple[int, int]             # ChunkPos, RegionPos, etc
+TPos3D: 't.TypeAlias' = t.Tuple[float, float, float]  # Pos
 
-# Somewhat general, but used only by LazyLoadMap
+# Somewhat general, but mostly used only by LazyLoadMap
+T = t.TypeVar('T')
 KT = t.TypeVar('KT', bound=t.Hashable)
 VT = t.TypeVar('VT')
 Pos2DT = t.TypeVar('Pos2DT', bound=TPos2D)
 AnyPath = t.Union[str, bytes, os.PathLike]
 LazyFileT = t.Union[AnyPath, VT]
+
+# To avoid importing nbt
+CompoundT = t.Dict[str, VT]
 
 
 class MCError(Exception):
@@ -80,17 +87,39 @@ class Dimension(enum.Enum):
         return cls[dimension.split(':')[-1].upper()]  # Ewww!
 
 
-class BasePos(tuple):
+class BasePos(TPos):
     """Common methods for *Pos classes
 
     typing.NamedTuple has issues with multiple inheritance, so formally this is
     not their superclass.
     """
     @property
-    def to_integers(self) -> tuple:
+    def as_integers(self) -> TPos[int]:
         # actually t.Union['Pos', 'ChunkPos', 'RegionPos'], and only used by Pos
-        """Coordinates truncated to integers"""
+        """New Position of the same type with coordinates truncated to integers"""
         return self.__class__(*map(int, self))
+
+    @staticmethod
+    def from_xz_tags(cls, parent: CompoundT[int], suffix: str = 'Pos') -> 'TPos2D':
+        """Read from an NBT Compound containing x<suffix> and z<suffix> coord tags"""
+        # tag: nbt.Compound[str, nbt.Int]
+        # Not worth parametrizing ('x', 'z') for now
+        # https://github.com/JetBrains/intellij-community/pull/1655
+        # noinspection PyTypeChecker
+        return cls(int(parent['x' + suffix]),
+                   int(parent['z' + suffix]))
+        # return cls(*(int(tag[f'{_}{suffix}']) for _ in ('x', 'z')))
+
+    @staticmethod  # actually classmethod
+    def from_array_tag(cls,
+                       tag: CompoundT[t.Iterable[NumT]],
+                       name: str = 'Position',
+                       cast: t.Callable[[t.Any], NumT] = int) -> 'TPos':
+        """Read from an NBT Compound <tag> containing a coords List/Array tag named <name>"""
+        # tag: nbt.Compound[str, nbt.IntArray]
+        # https://github.com/JetBrains/intellij-community/pull/1655
+        # noinspection PyTypeChecker
+        return cls(*map(cast, tag[name]))
 
     def __repr__(self, width: t.Union[int, t.Iterable[int]] = 3) -> str:
         # Example usage:
@@ -102,32 +131,31 @@ class BasePos(tuple):
         return '(' + ','.join(f"{int(c): {w}}" for c, w in zip(self, width)) + ')'
 
 
-class Pos(t.NamedTuple):
-    """Wrapper for a (x, y, z) tuple, with helpful conversions"""
-    # Consider officially allowing floats? Otherwise .as_integers makes no sense
-    x: int
-    y: int
-    z: int
+class Pos(t.NamedTuple):  # TPos3D
+    """(x, y, z) tuple of absolute world coordinates, with helpful conversions"""
+    x: float
+    y: float
+    z: float
 
-    to_integers = BasePos.to_integers
+    as_integers = BasePos.as_integers
     __repr__ = functools.partialmethod(BasePos.__repr__, width=(5, 3, 5))
 
     @property
-    def as_yzx(self) -> tuple: return self.y, self.x, self.z  # section block notation
+    def as_yzx(self) -> TPos3D: return self.y, self.x, self.z  # section block notation
 
     @property
-    def as_xzy(self) -> tuple: return self.x, self.z, self.y  # height last
+    def as_xzy(self) -> TPos3D: return self.x, self.z, self.y  # height last
 
     @property
-    def as_section_block(self) -> tuple:
-        ipos = self.to_integers  # Required by mod
+    def as_section_block(self) -> TPos3D:  # TPos3D[int] if it were parametrized
+        ipos = self.as_integers  # Required by mod
         return (ipos.y % SECTION_HEIGHT,
                 ipos.z % CHUNK_SIZE[1],
                 ipos.x % CHUNK_SIZE[0])
 
     @property
     def section(self) -> int:
-        return self.y // SECTION_HEIGHT
+        return int(self.y // SECTION_HEIGHT)
 
     @property
     def column(self) -> 'TPos2D':
@@ -149,11 +177,12 @@ class Pos(t.NamedTuple):
         return self.chunk.region
 
     @classmethod
-    def from_tag(cls, tag: t.Mapping[str, list]) -> 'Pos':  # tag: nbt.Compound
-        return cls(*tag['Pos']).to_integers
+    def from_tag(cls, tag):
+        return BasePos.from_array_tag(cls, tag, name='Pos', cast=float)
 
 
-class RegionPos(t.NamedTuple):
+class RegionPos(t.NamedTuple):  # TPos2D
+    """(rx, rz) tuple of region coordinates"""
     rx: int
     rz: int
 
@@ -163,11 +192,14 @@ class RegionPos(t.NamedTuple):
         return ChunkPos(*(s * g + o for s, g, o in zip(self, CHUNK_GRID, offset)))
 
 
-class ChunkPos(t.NamedTuple):
+class ChunkPos(t.NamedTuple):  # TPos2D
+    """(cx, cz) tuple of chunk coordinates, absolute or offset (relative to region)"""
     cx: int
     cz: int
 
     __repr__ = functools.partialmethod(BasePos.__repr__, width=4)
+    from_xz_tags   = classmethod(BasePos.from_xz_tags)
+    from_array_tag = classmethod(BasePos.from_array_tag)
 
     @property
     def offset(self) -> 'ChunkPos':
@@ -192,18 +224,6 @@ class ChunkPos(t.NamedTuple):
         """((rx, rz), (cxr, czr)) region and chunk offset coordinates of this chunk"""
         region, chunk = zip(*(divmod(c, g) for c, g in zip(self, CHUNK_GRID)))
         return RegionPos(*region), self.__class__(*chunk)
-
-    @classmethod
-    def from_nbt_tags(cls, tag: t.Mapping[str, int]) -> 'ChunkPos':
-        # tag: nbt.Compound[str, nbt.Int]
-        #      cls(*(int(tag[f'{_}Pos']) for _ in ('x', 'z')))
-        return cls(int(tag['xPos']),
-                   int(tag['zPos']))
-
-    @classmethod
-    def from_nbt_array(cls, tag: t.Mapping[str, t.Iterable[int]]) -> 'ChunkPos':
-        # tag: nbt.Compound[str, nbt.IntArray]
-        return cls(*map(int, tag['Position']))
 
 
 class LazyLoadMap(t.MutableMapping[KT, VT]):
