@@ -45,10 +45,21 @@ class Root(Compound):
 
     @property
     def data_root(self):
-        """The data root tag"""
+        """The sole root child tag containing all data apart from DataVersion.
+
+        If there is no such tag, return root itself
+        """
         root = self.root
-        if len(root) == 2 and 'Level' in root:  # 'region' subdir/category
-            return root['Level']
+        tags = set(root.keys()) - {'DataVersion'}
+
+        # 'Data'  in level.dat (with DataVersion *inside* it)
+        # 'data'  in <dim>/data/*.dat files (idcounts, map_*, raids*)
+        # 'Level' in chunks from <dim>/region/*.mca anvil files, 'region' category
+        if len(tags) == 1:
+            return root[next(iter(tags))]
+
+        # No sole child, data is at root along with with DataVersion
+        # - chunks from <dim>/*/*.mca anvil files, 'entities' and 'poi' categories
         return root
 
     # The following are copy-pasted from nbtlib.File
