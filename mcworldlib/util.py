@@ -17,6 +17,7 @@ __all__ = [
     'TPos3D',
     'BasePos',
     'Pos',
+    'FlatPos',
     'ChunkPos',
     'RegionPos',
     'pretty',
@@ -44,7 +45,7 @@ SECTION_HEIGHT = 16    # chunk section height in blocks
 # Pos stuff...
 NumT = t.TypeVar('NumT', int, float)
 TPos:   't.TypeAlias' = t.Tuple[NumT, ...]            # Any 2D/3D *Pos
-TPos2D: 't.TypeAlias' = t.Tuple[int, int]             # ChunkPos, RegionPos, etc
+TPos2D: 't.TypeAlias' = t.Tuple[int, int]             # FlatPos, ChunkPos, etc
 TPos3D: 't.TypeAlias' = t.Tuple[float, float, float]  # Pos
 
 # Somewhat general, but mostly used only by LazyLoadMap
@@ -158,14 +159,13 @@ class Pos(t.NamedTuple):  # TPos3D
         return int(self.y // SECTION_HEIGHT)
 
     @property
-    def column(self) -> 'TPos2D':
-        return self.x, self.z
+    def column(self) -> 'FlatPos':
+        return FlatPos(int(self.x), int(self.z))
 
     @property
-    def offset(self) -> 'TPos2D':
+    def offset(self) -> 'FlatPos':
         """(xc, zc) position coordinates relative to its chunk"""
-        # noinspection PyTypeChecker
-        return tuple(c % s for c, s in zip(self.column, CHUNK_SIZE))
+        return self.column.offset
 
     @property
     def chunk(self) -> 'ChunkPos':
@@ -179,6 +179,20 @@ class Pos(t.NamedTuple):  # TPos3D
     @classmethod
     def from_tag(cls, tag):
         return BasePos.from_array_tag(cls, tag, name='Pos', cast=float)
+
+
+class FlatPos(t.NamedTuple):  # TPos2D
+    """(x, z) tuple of integer coordinates, absolute or offset (relative to chunk)"""
+    x: int
+    z: int
+
+    from_tag = classmethod(BasePos.from_xz_tags)
+    __repr__ = functools.partialmethod(BasePos.__repr__, width=5)
+
+    @property
+    def offset(self) -> 'FlatPos':
+        """(xc, zc) position coordinates relative to its chunk"""
+        return self.__class__(*(c % s for c, s in zip(self, CHUNK_SIZE)))
 
 
 class RegionPos(t.NamedTuple):  # TPos2D
