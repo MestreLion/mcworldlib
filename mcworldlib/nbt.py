@@ -41,7 +41,7 @@ _log = _logging.getLogger(__name__)
 
 
 class Root(Compound):
-    """Unnamed Compound tag, used as root tag in files and chunks"""
+    """Unnamed Compound tag, the root tag in files and chunks"""
 
     __slots__ = (
         'root_name',
@@ -72,7 +72,7 @@ class Root(Compound):
     @property
     def root(self):
         """Deprecated, just use self directly."""
-        _log.warning(".root is deprecated, just access its contents directly")
+        _log.warning("Root.root is deprecated, just access its contents directly")
         return self
 
     @classmethod
@@ -83,7 +83,7 @@ class Root(Compound):
             # - root_name might not be in __slots__(), and thus not assignable
             # - not returning a superclass might be surprising and have side-effects
             raise TypeError("Non-Compound root tags is not supported:"
-                            f"{cls.get_tag(tag_id)}")
+                            f"{cls.get_tag(tag_id).__name__}")
         name = _read_string(buff, byteorder)
         self = super().parse(buff, byteorder)
         self.root_name = name
