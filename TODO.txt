@@ -1,9 +1,7 @@
+- Make AnvilRegion.load() store compressed NBT and return NBT decompressing on-the-fly,
+  to allow it to be nbtlib-agnostic
 - Fully support MCC files
-- Region files outside /region: /entities, /poi
 - Custom Dimensions
-- Create ChunkPos and RegionPos, specialized sub-classes of PosXZ assuming (cx, cz) and (rx, rz)
-	- Can PosXZ already assume cx, cz? If so, rename to ChunkPos and adjust formulas
-	- RegionPos.to_chunk(offset:ChunkPos=ChunkPos(0, 0)) -> ChunkPos
 - *Pos*() constructor should accept a single iterable in constructor, like tuple()
 	- Currently Pos(1, 2) is OK, Pos(pos) is not, and vice-versa for tuple()
 	- Method signatures that take a Pos must either be:
@@ -13,3 +11,9 @@
 - typing.NamedTuple can't be (trivially) subclassed
 	- dataclasses also do not accept single iterable in constructor, and are not isinstance(tuple)
 	- No other is as fast as NamedTuple: https://death.andgravity.com/namedtuples
+
+Similar tools:
+https://github.com/twoolie/NBT
+https://github.com/Amulet-Team/Amulet-NBT
+https://github.com/nwesterhausen/py-mcdata-to-json
+https://gist.github.com/nwesterhausen/527fb947d4432c1f40c06dca07cb9253
