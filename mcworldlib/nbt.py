@@ -42,8 +42,6 @@ _log = _logging.getLogger(__name__)
 
 class Root(Compound):
     """Unnamed Compound tag, used as root tag in files and chunks"""
-    # Should contain the following from nbtlib_File:
-    # __repr__()
 
     __slots__ = (
         'root_name',
@@ -95,6 +93,9 @@ class Root(Compound):
         _write_numeric(_BYTE, self.tag_id, buff, byteorder)
         _write_string(getattr(self, 'root_name', "") or "", buff, byteorder)
         super().write(buff, byteorder)
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {self.root_name!r}: tags: {len(self)}>'
 
 
 # Overrides and extensions
