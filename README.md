@@ -42,25 +42,23 @@ You can open a Minecraft World by several ways:
 >>> world = mc.load('data/New World')
 >>> mc.pretty(world)  # Most classes have a pretty print. In many cases, their NBT data.
 {
-    "": {
-        Data: {
-            WanderingTraderSpawnChance: 25,
-            BorderCenterZ: 0.0d,
-            Difficulty: 2b,
-            ...
-            SpawnAngle: 0.0f,
-            version: 19133,
-            BorderSafeZone: 5.0d,
-            LastPlayed: 1633981265600L,
-            BorderWarningTime: 15.0d,
-            ScheduledEvents: [],
-            LevelName: "New World",
-            BorderSize: 59999968.0d,
-            DataVersion: 2730,
-            DataPacks: {
-                Enabled: ["vanilla"],
-                Disabled: ["Fabric Mods"]
-            }
+    Data: {
+        WanderingTraderSpawnChance: 25,
+        BorderCenterZ: 0.0d,
+        Difficulty: 2b,
+        ...
+        SpawnAngle: 0.0f,
+        version: 19133,
+        BorderSafeZone: 5.0d,
+        LastPlayed: 1633981265600L,
+        BorderWarningTime: 15.0d,
+        ScheduledEvents: [],
+        LevelName: "New World",
+        BorderSize: 59999968.0d,
+        DataVersion: 2730,
+        DataPacks: {
+            Enabled: ["vanilla"],
+            Disabled: ["Fabric Mods"]
         }
     }
 }
@@ -139,20 +137,18 @@ A `RegionFile` is a dictionary of chunks, and each `Chunk` contains its NBT data
 >>> chunk = region[30, 31]
 >>> mc.pretty(chunk)  # alternatively, print(chunk.pretty())
 {
-    "": {
-        Level: {
-            Status: "structure_starts",
-            zPos: 31,
-            LastUpdate: 4959L,
-            InhabitedTime: 0L,
-            xPos: -34,
-            Heightmaps: {},
-            TileEntities: [],
-            Entities: [],
-            ...
-        },
-        DataVersion: 2730
-    }
+    Level: {
+        Status: "structure_starts",
+        zPos: 31,
+        LastUpdate: 4959L,
+        InhabitedTime: 0L,
+        xPos: -34,
+        Heightmaps: {},
+        TileEntities: [],
+        Entities: [],
+        ...
+    },
+    DataVersion: 2730
 }
 
 ```
@@ -246,7 +242,7 @@ Reading and modifying the Player's inventory is quite easy:
 import mcworldlib as mc
 world = mc.load('New World')
 inventory = world.player.inventory
-# The above is a shortcut for world.root['Data']['Player']['Inventory']
+# The above is a shortcut for world['Data']['Player']['Inventory']
 
 # Easily loop each item as if the inventory were a list. In fact, it *is*!
 for item in inventory:

@@ -50,16 +50,16 @@ class World(level.Level):
 
     @property
     def name(self):
-        return str(self.root.get('LevelName', os.path.basename(self.path)))
+        return str(self.data_root.get('LevelName', os.path.basename(self.path)))
 
     @name.setter
     def name(self, value):
-        self.root['LevelName'] = nbt.String(value)
+        self.data_root['LevelName'] = nbt.String(value)
 
     @property
     def level(self):
         """Somewhat redundant API shortcut, as for now World *is* a Level"""
-        return self.root
+        return self
 
     def _category_dict(self, category):
         return {k: v.get(category, {}) for k, v in self.dimensions.items()}

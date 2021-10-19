@@ -22,11 +22,6 @@ class Level(nbt.File):
         'player',
     )
 
-    @property
-    def root_name(self):
-        """The name of the root nbt tag."""
-        return nbt.Path("''.Data")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.player = None
@@ -41,7 +36,7 @@ class Level(nbt.File):
 
         # Player
         name = 'Player'
-        self.player = player.Player(self.root[name])
+        self.player = player.Player(self.data_root[name])
         self.player.name = name
         self.player.world = self
 

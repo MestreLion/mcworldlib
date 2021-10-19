@@ -11,19 +11,24 @@ Wraps whatever library is used as backend, currently nbtlib
 # and all the ones defined here
 
 import io as _io
+import logging as _logging
 import zlib as _zlib
 
 # TODO: (and suggest to nbtlib)
-# - class Root(Compound): transparently handle the unnamed [''] root tag
-#   - improve upon nbtlib.File.root property: self['x'] -> self['']['x']
-#   - nbtlib.File, chunk.Chunk and level.Level would inherit from it
-#   - completely hide the root from outside, re-add it only on .write()
 # - Auto-casting value to tag on assignment based on current type
 #   - compound['string'] = 'foo' -> compound['string'] = String('foo')
 #   - maybe this is only meant for nbtlib.Schema?
-# - String.__str__() should not quote or escape
+
+# not in nbtlib.tag.__all__ and only used here
 # noinspection PyProtectedMember
-from nbtlib.tag import Base as _Base   # Not in nbtlib.tag.__all__
+from nbtlib.tag import (
+    Base as _Base,
+    BYTE as _BYTE,
+    read_numeric  as _read_numeric,
+    read_string   as _read_string,
+    write_numeric as _write_numeric,
+    write_string  as _write_string,
+)
 from nbtlib.tag import *
 # noinspection PyUnresolvedReferences
 from nbtlib.nbt import File as _File, load as load_dat  # could be File.load
@@ -32,16 +37,21 @@ from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
 
+_log = _logging.getLogger(__name__)
+
+
 class Root(Compound):
     """Unnamed Compound tag, used as root tag in files and chunks"""
     # Should contain the following from nbtlib_File:
-    # root_name()
-    # root_name.setter()
-    # root()
-    # root.setter()
     # __repr__()
 
-    __slots__ = ()
+    __slots__ = (
+        'root_name',
+    )
+
+    def __init__(self, root_name: str = "", *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.root_name: str = root_name
 
     @property
     def data_root(self):
@@ -49,38 +59,42 @@ class Root(Compound):
 
         If there is no such tag, return root itself
         """
-        root = self.root
-        tags = set(root.keys()) - {'DataVersion'}
+        tags = set(self.keys()) - {'DataVersion'}
 
         # 'Data'  in level.dat (with DataVersion *inside* it)
         # 'data'  in <dim>/data/*.dat files (idcounts, map_*, raids*)
         # 'Level' in chunks from <dim>/region/*.mca anvil files, 'region' category
         if len(tags) == 1:
-            return root[next(iter(tags))]
+            return self[next(iter(tags))]
 
         # No sole child, data is at root along with with DataVersion
         # - chunks from <dim>/*/*.mca anvil files, 'entities' and 'poi' categories
-        return root
-
-    # The following are copy-pasted from nbtlib.File
-
-    @property
-    def root_name(self):
-        """The name of the root nbt tag."""
-        return next(iter(self), None)
-
-    @root_name.setter
-    def root_name(self, value):
-        self[value] = self.pop(self.root_name)
+        return self
 
     @property
     def root(self):
-        """The root nbt tag of the file."""
-        return self[self.root_name]
+        """Deprecated, just use self directly."""
+        _log.warning(".root is deprecated, just access its contents directly")
+        return self
 
-    @root.setter
-    def root(self, value):
-        self[self.root_name] = value
+    @classmethod
+    def parse(cls, buff, byteorder='big'):
+        tag_id = _read_numeric(_BYTE, buff, byteorder)
+        if not tag_id == cls.tag_id:
+            # Possible issues with a non-Compound root:
+            # - root_name might not be in __slots__(), and thus not assignable
+            # - not returning a superclass might be surprising and have side-effects
+            raise TypeError("Non-Compound root tags is not supported:"
+                            f"{cls.get_tag(tag_id)}")
+        name = _read_string(buff, byteorder)
+        self = super().parse(buff, byteorder)
+        self.root_name = name
+        return self
+
+    def write(self, buff, byteorder='big'):
+        _write_numeric(_BYTE, self.tag_id, buff, byteorder)
+        _write_string(getattr(self, 'root_name', "") or "", buff, byteorder)
+        super().write(buff, byteorder)
 
 
 # Overrides and extensions
