@@ -78,9 +78,9 @@ class AnvilFile(collections.abc.MutableMapping):
     MAX_CHUNKS = u.CHUNK_GRID[0] * u.CHUNK_GRID[1]  # 1024
     MAX_CHUNK_SIZE = SECTOR_BYTES * (2**(8 * CHUNK_SECTOR_COUNT_BYTES) - 1)  # ~1MiB
 
-    def __init__(self, chunks: dict = None):
-        self._chunks:   dict   = {} if chunks is None else dict(chunks)
-        self.filename:  str    = ""
+    def __init__(self, chunks: dict = None, *, filename: str = None):
+        self._chunks:   dict   = dict(chunks or {})
+        self.filename:  str    = filename or ""
 
     @property
     def chunks(self):
@@ -92,19 +92,18 @@ class AnvilFile(collections.abc.MutableMapping):
         self._chunks = {_.pos: _ for _ in chunks}
 
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename, **initkw):
         """Load anvil file from a path"""
-        return cls.parse(open(filename, 'rb'))
+        with open(filename, 'rb') as buff:
+            return cls.parse(buff, filename=filename, **initkw)
 
     @classmethod
-    def parse(cls, buff):
+    def parse(cls, buff, *, filename=None, **initkw):
         """Parse region from file-like object, build an instance and return it
 
         https://minecraft.gamepedia.com/Region_file_format
         """
-        self = cls()
-
-        self.filename = getattr(buff, 'name', None)
+        self = cls(filename=filename or getattr(buff, 'name', None), **initkw)
 
         log.debug("Loading Region: %s", self.filename)
         locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=self.MAX_CHUNKS)
@@ -121,32 +120,28 @@ class AnvilFile(collections.abc.MutableMapping):
                 raise RegionError(f"Invalid offset for {chunk_msg[0] % chunk_msg[1:]},"
                                   f" max is {self.MAX_CHUNK_SIZE * self.MAX_CHUNKS}")
 
-            buff.seek(offset)
-            try:
-                chunk = RegionChunk.parse(buff)
-            except ChunkError as e:
-                log.error(f"Could not parse {chunk_msg[0]}: %s", *chunk_msg[1:], e)
-                continue
-
             # timestamp should be after ~2001-09-09 GMT
             if timestamp < 1000000000:
                 log.warning(f"Invalid timestamp for {chunk_msg[0]}: %s (%s)",
                             *chunk_msg[1:], timestamp, u.isodate(timestamp))
 
-            # Warn when sector_count does not match expected as declared in the region header.
-            # Sometimes Minecraft saves sector_count + 1 when chunk length
-            # (including header) is an exact multiple of SECTOR_BYTES
+            buff.seek(offset)
+            try:
+                chunk = RegionChunk.parse(buff, region=self, pos=pos, timestamp=timestamp)
+            except ChunkError as e:
+                log.error(f"Could not parse {chunk_msg[0]}: %s", *chunk_msg[1:], e)
+                continue
+
+            # Warn when sector_count does not match expected as declared in the
+            # region header. Minecraft may count the compression byte twice in
+            # chunk length, so when the actual length is an exact multiple of
+            # SECTOR_BYTES, we might have sector_count 1 sector over the expected.
             if sector_count not in (chunk.sector_count, chunk.sector_count + 1):
                 log.warning(
                     f"Length mismatch in {chunk_msg[0]}: region header declares"
                     " %s %s-byte sectors, but chunk data required %s.",
                     *chunk_msg[1:], sector_count, SECTOR_BYTES, chunk.sector_count
                 )
-
-            chunk.region = self
-            chunk.pos = pos
-            chunk.offset = offset
-            chunk.timestamp = timestamp
 
             self[pos] = chunk
 
@@ -268,11 +263,10 @@ class RegionFile(AnvilFile):
     )
     _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
 
-    # noinspection PyTypeChecker
-    def __init__(self, **kw):
+    def __init__(self, *, regions: 'Regions' = None, pos: u.TPos2D = None, **kw):
+        self.regions: Regions     = regions
+        self.pos:     u.RegionPos = u.RegionPos(*pos)
         super().__init__(**kw)
-        self.regions: Regions     = None
-        self.pos:     u.RegionPos = None
 
     @property
     def world(self):
@@ -322,10 +316,8 @@ class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
     def _is_loaded(self, pos, item) -> bool:
         return isinstance(item, RegionFile)
 
-    def _load_item(self, pos: u.TPos2D, path: u.AnyPath):
-        region = RegionFile.load(path)
-        region.regions = self
-        region.pos = u.RegionPos(*pos)
+    def _load_item(self, pos: u.TPos2D, path: u.AnyPath) -> (u.RegionPos, RegionFile):
+        region = RegionFile.load(path, regions=self, pos=pos)
         return region.pos, region
 
     @classmethod
@@ -361,7 +353,6 @@ class RegionChunk(c.Chunk):
     Being in a Region extends Chunk with several extra attributes:
     region       -- parent RegionFile which this Chunk belongs to
     pos          -- (x, z) relative position in Region, also its key in region mapping
-    offset       -- Offset in bytes in region file. Currently unused
     sector_count -- Chunk size, in data sectors (4096 bytes)
     timestamp    -- Last saved, set only by Minecraft client
     compression  -- Chunk data compression type. Currently only Zlib is used
@@ -379,7 +370,6 @@ class RegionChunk(c.Chunk):
     __slots__ = (
         'region',
         'pos',
-        'offset',
         'sector_count',
         'timestamp',
         'compression',
@@ -406,9 +396,8 @@ class RegionChunk(c.Chunk):
         super().__init__(*args, **tags)
         self.region:        RegionFile  = None
         self.pos:           u.ChunkPos  = None
-        self.offset:        int         = 0  # Set by AnvilFile.parse()
-        self.sector_count:  int         = 0
-        self.timestamp:     int         = 0  # Also set by AnvilFile.parse()
+        self.timestamp:     int         = 0
+        self.sector_count:  int         = 0  # only used by AnvilFile.parse()
         self.compression:   int         = COMPRESSION_ZLIB  # Minecraft default
         self.external:      bool        = False  # MCC files
         self.dirty:         bool        = True  # For now
@@ -418,7 +407,9 @@ class RegionChunk(c.Chunk):
         return self.region.pos.to_chunk(self.pos)
 
     @classmethod
-    def parse(cls, buff, *args, **kwargs) -> 'RegionChunk':
+    def parse(cls, buff,
+              region: AnvilFile = None, pos=None, timestamp=None,
+              *args, **kwargs) -> 'RegionChunk':
         """
         https://minecraft.fandom.com/wiki/Region_file_format#Chunk_data
         https://www.reddit.com/r/technicalminecraft/comments/e4wxb6/
@@ -446,6 +437,9 @@ class RegionChunk(c.Chunk):
         data = cls.decompress[compression](buff.read(length))
         self: 'RegionChunk' = super().parse(io.BytesIO(data), *args, **kwargs)
 
+        self.region = region
+        self.pos = pos
+        self.timestamp = timestamp
         self.sector_count = num_sectors(length + cls.CHUNK_HEADER.size)
         self.compression = compression
         self.external = external
