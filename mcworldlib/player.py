@@ -15,21 +15,22 @@ from . import util as u
 
 
 class Player(nbt.Compound):
-    __slots__ = ('name', 'world')
+    __slots__ = ('name', 'level')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, name='Player', level=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = 'Player'
-        self.world = None
+        self.name = name
+        self.level = level
 
     @property
-    def inventory(self):
-        return self['Inventory']
+    def inventory(self) -> nbt.List[nbt.Compound]: return self['Inventory']
+    @inventory.setter
+    def inventory(self, value: nbt.List[nbt.Compound]): self['Inventory'] = value
 
     def get_chunk(self):
         """The chunk containing the player location"""
-        if not self.world:
+        if not (self.level and self.level.world):
             return None
 
-        return self.world.get_chunk_at(self['Pos'],
-                                       u.Dimension.from_nbt(self['Dimension']))
+        return self.level.world.get_chunk_at(self['Pos'],
+                                             u.Dimension.from_nbt(self['Dimension']))

@@ -10,34 +10,49 @@ Exported items:
 
 __all__ = ['Level']
 
+import logging
+import typing as t
 
 from . import nbt
 from . import player
+
+log = logging.getLogger(__name__)
+T = t.TypeVar('T')
 
 
 class Level(nbt.File):
     """level.dat file"""
 
     __slots__ = (
-        'player',
+        'world',
     )
 
-    def __init__(self, *args, **kwargs):
+    _paths = {
+        'player': 'Player',
+    }
+
+    def __init__(self, *args, world=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.player = None
+        self.world = world
+
+    @property
+    def player(self) -> nbt.Compound: return self.data_root[self._paths['player']]
+    @player.setter
+    def player(self, value: nbt.Compound): self.data_root[self._paths['player']] = value
 
     @classmethod
     def load(cls, filename, **kwargs):
-        return super().load(filename, gzipped=True, byteorder='big')
+        return super().load(filename, gzipped=True, byteorder='big', **kwargs)
 
     @classmethod
-    def parse(cls, buff, *args, **kwargs):
-        self = super().parse(buff, *args, **kwargs)
+    def parse(cls: t.Type[T], buff, *args, world=None, **kwargs) -> T:
+        self: T = super().parse(buff, *args, **kwargs)
+        # Can't rely on Compound.parse() to pass args to init()
+        self.world = world
 
-        # Player
-        name = 'Player'
-        self.player = player.Player(self.data_root[name])
-        self.player.name = name
-        self.player.world = self
+        try:
+            self.player = player.Player(self.player, level=self)
+        except KeyError:
+            log.warning("Level has no Player, possibly malformed: %s", self.filename)
 
         return self
