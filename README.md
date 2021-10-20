@@ -40,7 +40,8 @@ You can open a Minecraft World by several ways:
 ```pycon
 >>> import mcworldlib as mc
 >>> world = mc.load('data/New World')
->>> mc.pretty(world)  # Most classes have a pretty print. In many cases, their NBT data.
+>>> # Most classes have a pretty print. In many cases, their NBT data.
+>>> mc.pretty(world.level)
 {
     Data: {
         WanderingTraderSpawnChance: 25,
@@ -198,7 +199,75 @@ a few chunks from distinct regions were accessed. So what is the state of the
 
 As promised, only the accessed region files were actually loaded, automatically.
 
----
+### Editing world data
+
+Reading and modifying the Player's inventory is quite easy:
+
+```pycon
+>>> inventory = world.player.inventory  # A handy shortcut
+>>> inventory is world.level['Data']['Player']['Inventory']
+True
+>>> # Easily loop each item as if the inventory is a list. In fact, it *is*!
+>>> for item in inventory:
+...     print(f"Slot {item['Slot']:3}: {item['Count']:2} x {item['id']}")
+Slot   0:  1 x minecraft:stone_axe
+Slot   1:  1 x minecraft:stone_pickaxe
+Slot   2:  1 x minecraft:wooden_axe
+Slot   3:  1 x minecraft:stone_shovel
+Slot   4:  1 x minecraft:crafting_table
+Slot   5: 37 x minecraft:coal
+Slot   6:  8 x minecraft:dirt
+Slot  11:  2 x minecraft:oak_log
+Slot  12:  5 x minecraft:cobblestone
+Slot  13:  2 x minecraft:stick
+Slot  28:  1 x minecraft:wooden_pickaxe
+
+```
+
+How about some **diamonds**?
+Get 64 *blocks* of it in each one of your free inventory slots!
+
+```pycon
+>>> free_slots = set(range(36)) - set(item['Slot'] for item in inventory)
+>>> for slot in free_slots:
+...     print(f"Adding 64 blocks of Diamond to inventory slot {slot}")
+...     item = mc.Compound({
+...         'Slot':  mc.Byte(slot),
+...         'id':    mc.String('minecraft:diamond_block'),  # Sweet!
+...         'Count': mc.Byte(64),  # Enough for you?
+...     })
+...     inventory.append(item)  # Yup, it's THAT simple!
+...
+Adding 64 blocks of Diamond to inventory slot 7
+Adding 64 blocks of Diamond to inventory slot 8
+Adding 64 blocks of Diamond to inventory slot 9
+Adding 64 blocks of Diamond to inventory slot 10
+Adding 64 blocks of Diamond to inventory slot 14
+Adding 64 blocks of Diamond to inventory slot 15
+Adding 64 blocks of Diamond to inventory slot 16
+Adding 64 blocks of Diamond to inventory slot 17
+Adding 64 blocks of Diamond to inventory slot 18
+Adding 64 blocks of Diamond to inventory slot 19
+Adding 64 blocks of Diamond to inventory slot 20
+Adding 64 blocks of Diamond to inventory slot 21
+Adding 64 blocks of Diamond to inventory slot 22
+Adding 64 blocks of Diamond to inventory slot 23
+Adding 64 blocks of Diamond to inventory slot 24
+Adding 64 blocks of Diamond to inventory slot 25
+Adding 64 blocks of Diamond to inventory slot 26
+Adding 64 blocks of Diamond to inventory slot 27
+Adding 64 blocks of Diamond to inventory slot 29
+Adding 64 blocks of Diamond to inventory slot 30
+Adding 64 blocks of Diamond to inventory slot 31
+Adding 64 blocks of Diamond to inventory slot 32
+Adding 64 blocks of Diamond to inventory slot 33
+Adding 64 blocks of Diamond to inventory slot 34
+Adding 64 blocks of Diamond to inventory slot 35
+
+>>> world.save()  # Go on, we both know you want it. I won't judge you.
+
+```
+Have fun, you millionaire!
 
 More fun things to do:
 ```pycon
@@ -230,61 +299,9 @@ Chicken at (   6,  64, 217)
 
 ```
 
-Test all the examples by yourself:
+Test yourself all the examples in this document:
 
     python3 -m doctest -f -o ELLIPSIS -o NORMALIZE_WHITESPACE README.md
-
-### Editing world data
-
-Reading and modifying the Player's inventory is quite easy:
-
-```python
-import mcworldlib as mc
-world = mc.load('New World')
-inventory = world.player.inventory
-# The above is a shortcut for world['Data']['Player']['Inventory']
-
-# Easily loop each item as if the inventory were a list. In fact, it *is*!
-for item in inventory:
-    print(f"Slot {item['Slot']:3}: {item['Count']:2} x {item['id']}")
-```
-```
-INFO  : Loading World 'New World': /home/rodrigo/.minecraft/saves/New World
-Slot   0:  1 x minecraft:diamond_sword
-Slot   1:  1 x minecraft:bow
-Slot   2:  1 x minecraft:diamond_pickaxe
-Slot   3:  1 x minecraft:diamond_pickaxe
-Slot   8: 64 x minecraft:torch
-Slot   9:  1 x minecraft:filled_map
-Slot  17:  8 x minecraft:arrow
-Slot  26: 35 x minecraft:birch_log
-Slot  27:  1 x minecraft:diamond_axe
-Slot  28:  1 x minecraft:diamond_shovel
-Slot  35:  5 x minecraft:ender_chest
-Slot 100:  1 x minecraft:diamond_boots
-Slot 101:  1 x minecraft:diamond_leggings
-Slot 102:  1 x minecraft:diamond_chestplate
-Slot 103:  1 x minecraft:diamond_helmet
-Slot -106: 62 x minecraft:cooked_beef
-```
-
-How about some **diamonds**?
-Get 64 *blocks* of it in each one of your free inventory slots!
-
-```python
-free_slots = set(range(9, 36)) - set(item['Slot'] for item in inventory)
-for slot in free_slots:
-    print(f"Adding 64 blocks of Diamond to inventory slot {slot}")
-    item = mc.Compound({
-        'Slot':  mc.Byte(slot),
-        'id':    mc.String('minecraft:diamond_block'),  # Sweet!
-        'Count': mc.Byte(64),  # Enough for you?
-    })
-    inventory.append(item)  # yup, it's THAT simple!
-
-world.save()
-```
-Have fun, you millionaire!
 
 ---
 Contributing
@@ -306,25 +323,26 @@ Patches are welcome! Fork, hack, request pull! Here is a succinct to-do list:
 
 - **CLI**: Add a command-line interface for commonly used operations.
 
-See the [To-Do List](./TODO.txt) for a more updated technical information and
+See the [To-Do List](./TODO.txt) for more updated technical information and
 planned features.
 
 If you find a bug or have any enhancement request, please to open a
 [new issue](https://github.com/MestreLion/mcworldlib/issues/new)
 
 
-Written by
-----------
+Author
+------
 
 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 
-Licenses and Copyright
-----------------------
+License and Copyright
+---------------------
+```
+Copyright (C) 2019 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>.
 
-> Copyright (C) 2019 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>.
->
-> License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
->
-> This is free software: you are free to change and redistribute it.
->
-> There is NO WARRANTY, to the extent permitted by law.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+
+This is free software: you are free to change and redistribute it.
+
+There is NO WARRANTY, to the extent permitted by law.
+```

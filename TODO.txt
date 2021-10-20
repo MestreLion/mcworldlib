@@ -1,19 +1,31 @@
-- Make AnvilRegion.load() store compressed NBT and return NBT decompressing on-the-fly,
-  to allow it to be nbtlib-agnostic
-- Fully support MCC files
+- Other NBT .dat files: World.data, for the "data/" dir, advancements, playerdata
+- JSON data
+- Easy, path-like way to locate and print an NBT data in World
+	- @property subpath, relative to parent, for all classes:
+		- Level: path.stem() [always "level.dat"]
+		- Dimension: path.relative_to(world.path)
+		- Regions: category
+		- Region: path.stem()
+		- Chunk: "chunk.{cx}.{cz}"
 - Custom Dimensions
+	- Convert Dimension to a full-fledged class
+	- Overworld, Nether and The End are singleton instances
+- Decouple Anvil/Regions and NBT parsing Library
+	- AnvilRegion.load() store compressed NBT and return NBT decompressing on-the-fly,
+	  fully agnostic about NBT content
+	-
+- Fully support MCC files
 - *Pos*() constructor should accept a single iterable in constructor, like tuple()
 	- Currently Pos(1, 2) is OK, Pos(pos) is not, and vice-versa for tuple()
 	- Method signatures that take a Pos must either be:
 		- Pos.method(otherpos), inconsistent with constructor, or
 		- Pos.method(*otherpos), forcing an un-natural unpacking
-	- Can't (trivially) override typing.NamedTuple.__new__
-- typing.NamedTuple can't be (trivially) subclassed
+	- Can't (trivially) override typing.NamedTuple.__new__, or subclass it
 	- dataclasses also do not accept single iterable in constructor, and are not isinstance(tuple)
 	- No other is as fast as NamedTuple: https://death.andgravity.com/namedtuples
 
 Similar tools:
-https://github.com/twoolie/NBT
 https://github.com/Amulet-Team/Amulet-NBT
+https://github.com/twoolie/NBT
 https://github.com/nwesterhausen/py-mcdata-to-json
 https://gist.github.com/nwesterhausen/527fb947d4432c1f40c06dca07cb9253
