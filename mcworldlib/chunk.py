@@ -28,6 +28,7 @@ class Chunk(nbt.Root):
     @classmethod
     def parse(cls, *args, **kwargs):
         self = super().parse(*args, **kwargs)
+        # In Entities Lists, replace plain Compound with an Entity (subclass) instance
         for i, e in enumerate(self.entities or []):
             self.entities[i] = entity.Entity.subclass(e)
         return self

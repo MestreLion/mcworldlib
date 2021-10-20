@@ -28,12 +28,13 @@ log = logging.getLogger(__name__)
 class WorldNotFoundError(u.MCError, IOError): pass
 
 
-class World(level.Level):
+class World:
     """Save directory and all related files and objects"""
 
     __slots__ = (
         'path',
         'dimensions',
+        'level',
     )
 
     # A.K.A Dimension subdirs
@@ -43,26 +44,22 @@ class World(level.Level):
         'poi'
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.path = ""
-        self.dimensions = {}
+    def __init__(self, path: u.AnyPath   = None, *,
+                 levelobj:   level.Level = None,
+                 dimensions: dict        = None,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.path:       u.AnyPath   = path
+        self.level:      level.Level = levelobj
+        self.dimensions: dict        = dict(dimensions or {})
 
     @property
     def name(self):
-        return str(self.data_root.get('LevelName', os.path.basename(self.path)))
+        return str(self.level.data_root.get('LevelName', os.path.basename(self.path)))
 
     @name.setter
     def name(self, value):
-        self.data_root['LevelName'] = nbt.String(value)
-
-    @property
-    def level(self):
-        """Somewhat redundant API shortcut, as for now World *is* a Level"""
-        return self
-
-    def _category_dict(self, category):
-        return {k: v.get(category, {}) for k, v in self.dimensions.items()}
+        self.level.data_root['LevelName'] = nbt.String(value)
 
     @property
     def regions(self):
@@ -80,6 +77,11 @@ class World(level.Level):
         return self._category_dict('poi')
 
     @property
+    def player(self):
+        """The Single Player """
+        return self.level.player
+
+    @property
     def chunk_count(self):  # FIXME!
         return sum(len(_) for _ in self.regions)
 
@@ -92,7 +94,7 @@ class World(level.Level):
             for chunk in region.values():
                 yield chunk
 
-    def get_all_chunks(self, progress=True):
+    def get_all_chunks(self, progress=True) -> (u.Dimension, str, anvil.RegionChunk):
         """Yield a (dimension, category, chunk) tuple for all chunks in all dimensions and categories"""
         dimensions = self.dimensions.keys()
         if progress:
@@ -144,31 +146,32 @@ class World(level.Level):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, path, progress=True, **kwargs):
-        self: 'World'
+    def load(cls, path: u.AnyPath, **kwargs):
+        self: 'World' = cls()
 
         # /level.dat and directory path
         if hasattr(path, 'name'):
             # Assume file-like buffer to level.dat
-            self = cls.parse(path)
-            self.path = os.path.dirname(path.name)
+            self.path  = os.path.dirname(path.name)
+            self.level = level.Level.parse(path)
         elif os.path.isfile(path):
             # Assume level.dat itself
-            self = super().load(path, **kwargs)
-            self.path = os.path.dirname(path)
+            self.path  = os.path.dirname(path)
+            self.level = level.Level.load(path, **kwargs)
         elif os.path.isdir(path):
             # Assume directory containing level.dat
-            self = super().load(os.path.join(path, 'level.dat'), **kwargs)
-            self.path = path
+            self.path  = path
+            self.level = level.Level.load(os.path.join(path, 'level.dat'), **kwargs)
         else:
             # Last chance: try path as name of a minecraft save dir
             path = os.path.expanduser(os.path.join(u.MINECRAFT_SAVES_DIR, path))
             if os.path.isdir(path):
-                self = super().load(os.path.join(path, 'level.dat'), **kwargs)
-                self.path = path
+                self.path  = path
+                self.level = level.Level.load(os.path.join(path, 'level.dat'), **kwargs)
             else:
-                # self = cls()  # blank world
                 raise WorldNotFoundError(f"World not found: {path}")
+        # Can't rely on nbtlib.File.load() to pass args to parse()
+        self.level.world = self
 
         log.info("Loading World '%s': %s", self.name, self.path)
 
@@ -183,6 +186,12 @@ class World(level.Level):
         # ...
 
         return self
+
+    def _category_dict(self, category):
+        return {k: v.get(category, {}) for k, v in self.dimensions.items()}
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {self.name!r} at {self.path!r}>'
 
 
 load = World.load

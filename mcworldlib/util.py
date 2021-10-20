@@ -13,6 +13,7 @@ __all__ = [
     'MINECRAFT_SAVES_DIR',
     'MCError',
     'Dimension',
+    'AnyPath',
     'TPos2D',
     'TPos3D',
     'BasePos',
