@@ -93,7 +93,7 @@ class Root(Compound):
 
     @property
     def _data_root(self) -> t.Tuple[str, Compound]:
-        tags = self.keys() - 'DataVersion'
+        tags = self.keys() - {'DataVersion'}
         if not len(tags) == 1:
             return "", self
         name = next(iter(tags))

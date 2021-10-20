@@ -128,7 +128,7 @@ class World:
         if not isinstance(coords, u.Pos):
             coords = u.Pos(*coords)
         chunk = self.get_chunk_at(coords, dimension=dimension, category='region')
-        palette, indexes = chunk.get_section_blocks(coords.section)
+        palette, indexes = chunk.get_section_blocks(Y=coords.section)
         if not palette:
             return None
         return palette[int(indexes[coords.as_section_block])]
@@ -144,6 +144,10 @@ class World:
                                 (self.name, name))
         # Multiplayer
         raise NotImplementedError
+
+    def save(self):
+        # TODO: Save the Regions!
+        self.level.save()
 
     @classmethod
     def load(cls, path: u.AnyPath, **kwargs):
