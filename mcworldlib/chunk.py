@@ -10,12 +10,14 @@ Exported items:
 
 __all__ = ['Chunk']
 
-
 import numpy
+import typing as t
 
 from . import nbt
 from . import entity
 from . import util as u
+
+T = t.TypeVar('T', bound=nbt.Root)
 
 
 # TODO: create an nbt.Schema for it
@@ -26,8 +28,8 @@ class Chunk(nbt.Root):
     BS_INDEXES = u.CHUNK_SIZE[0] * u.CHUNK_SIZE[1] * u.SECTION_HEIGHT  # 16 * 16 * 16 = 4096
 
     @classmethod
-    def parse(cls, *args, **kwargs):
-        self = super().parse(*args, **kwargs)
+    def parse(cls: t.Type[T], *args, **kwargs) -> T:
+        self: T = super().parse(*args, **kwargs)
         # In Entities Lists, replace plain Compound with an Entity (subclass) instance
         for i, e in enumerate(self.entities or []):
             self.entities[i] = entity.Entity.subclass(e)

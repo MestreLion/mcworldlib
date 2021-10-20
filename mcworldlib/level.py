@@ -17,7 +17,7 @@ from . import nbt
 from . import player
 
 log = logging.getLogger(__name__)
-T = t.TypeVar('T')
+T = t.TypeVar('T', bound=nbt.Root)
 
 
 class Level(nbt.File):

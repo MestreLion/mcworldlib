@@ -71,7 +71,7 @@ class Root(Compound):
         self.root_name: str = root_name
 
     @property
-    def data_root(self) -> AnyTag:
+    def data_root(self) -> Compound:
         """Root itself or the child containing all data apart from DataVersion.
 
         A convenience shortcut for root compounds that contains just DataVersion
@@ -92,11 +92,12 @@ class Root(Compound):
         return self._data_root[0]
 
     @property
-    def _data_root(self) -> t.Tuple[str, AnyTag]:
+    def _data_root(self) -> t.Tuple[str, Compound]:
         tags = self.keys() - 'DataVersion'
         if not len(tags) == 1:
             return "", self
         name = next(iter(tags))
+        # FIXME: Should make sure it's actually a Compound and not just AnyTag
         return name, self[name]
 
     @property
