@@ -149,10 +149,13 @@ class File(Root, _File):
     def load_mcc(cls, filename):
         with open(filename, 'rb') as buff:
             data = _io.BytesIO(_zlib.decompress(buff.read()))
-        return cls.from_buffer(data)
+        self = cls.from_buffer(data)
+        self.filename = filename
+        return self
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} {self.filename!r} {self.root!r}>'
+        name = self.__class__.__name__
+        return super().__repr__().replace(f"<{name}", f"<{name} {self.filename!r}", 1)
 
 
 # Add .pretty() method to all NBT tags
