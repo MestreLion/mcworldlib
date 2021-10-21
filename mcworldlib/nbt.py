@@ -100,12 +100,6 @@ class Root(Compound):
         # FIXME: Should make sure it's actually a Compound and not just AnyTag
         return name, self[name]
 
-    @property
-    def root(self):
-        """Deprecated, just use self directly."""
-        _log.warning("Root.root is deprecated, just access its contents directly")
-        return self
-
     @classmethod
     def parse(cls: t.Type[T], buff, byteorder='big') -> T:
         # For the typing dance, see https://stackoverflow.com/a/44644576/624066
@@ -163,6 +157,10 @@ _Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 
 # Fix String.__str__. Not needed in modern nbtlib versions
 String.__str__ = lambda self: str.__str__(self)
+
+# Just in case, as now we have a very different meaning for .root_name
+delattr(_File, 'root')
+delattr(_File, 'root_name')
 
 # Convenience shortcut
 load_mcc = File.load_mcc
