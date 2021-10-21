@@ -1,6 +1,7 @@
 - Other NBT .dat files: World.data, for the "data/" dir, advancements, playerdata
 - JSON data
 - Easy, path-like way to locate and print an NBT data in World
+	- see walk_nbt() and extend it to all World filesystem
 	- @property subpath, relative to parent, for all classes:
 		- Level: path.stem() [always "level.dat"]
 		- Dimension: path.relative_to(world.path)
@@ -13,7 +14,15 @@
 - Decouple Anvil/Regions and NBT parsing Library
 	- AnvilRegion.load() store compressed NBT and return NBT decompressing on-the-fly,
 	  fully agnostic about NBT content
-	-
+- Dirty control. Possible strategies:
+	- Manual control, user sets chunk.changed = True (Amulet approach)
+	- Custom __setitem__/__delitem__ on Compound and List to auto-set dirty
+	- Serializing+Hashing content to detect changes:
+		- serialize and hash Root on parse(), keep result, do it again on write() and compare
+		- serializing must be *MUCH* faster than write(), otherwise just compare binary NBT
+		- hashes: md5, python's hash()
+		- serializations: JSON, Pickle, walk, str/repr(sorted(dict.items())), msgpack
+
 - Fully support MCC files
 - *Pos*() constructor should accept a single iterable in constructor, like tuple()
 	- Currently Pos(1, 2) is OK, Pos(pos) is not, and vice-versa for tuple()
