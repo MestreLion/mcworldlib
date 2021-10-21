@@ -11,10 +11,10 @@ Wraps whatever library is used as backend, currently nbtlib
 # and all the ones defined here
 
 # Delete ALL imported and declared names not meant for export, see the end of file
-import io
-import logging
-import typing as t
-import zlib
+import io      as _io
+import logging as _logging
+import typing  as t
+import zlib    as _zlib
 
 # TODO: (and suggest to nbtlib)
 # - Auto-casting value to tag on assignment based on current type
@@ -39,7 +39,7 @@ from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
 
-_log = logging.getLogger(__name__)
+_log = _logging.getLogger(__name__)
 
 # Concrete and (meant to be) instantiable tags, i.e. no Base, Numeric, End, etc
 AnyTag: 't.TypeAlias' = t.Union[
@@ -148,7 +148,7 @@ class File(Root, _File):
     @classmethod
     def load_mcc(cls, filename):
         with open(filename, 'rb') as buff:
-            data = io.BytesIO(zlib.decompress(buff.read()))
+            data = _io.BytesIO(_zlib.decompress(buff.read()))
         return cls.from_buffer(data)
 
     def __repr__(self):
@@ -164,9 +164,4 @@ String.__str__ = lambda self: str.__str__(self)
 # Convenience shortcut
 load_mcc = File.load_mcc
 
-del (
-    io,
-    logging,
-    t,
-    zlib,
-)
+del t
