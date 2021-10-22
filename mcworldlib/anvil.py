@@ -96,16 +96,19 @@ class AnvilFile(collections.abc.MutableMapping):
     @classmethod
     def load(cls, filename, **initkw):
         """Load anvil file from a path"""
+        initkw['filename'] = filename
         with open(filename, 'rb') as buff:
-            return cls.parse(buff, filename=filename, **initkw)
+            return cls.parse(buff, **initkw)
 
     @classmethod
-    def parse(cls, buff, *, filename=None, **initkw):
+    def parse(cls, buff, **initkw):
         """Parse region from file-like object, build an instance and return it
 
         https://minecraft.gamepedia.com/Region_file_format
         """
-        self = cls(filename=filename or getattr(buff, 'name', None), **initkw)
+        self = cls(**initkw)
+        if not self.filename:
+            self.filename = getattr(buff, 'name', "")
 
         log.debug("Loading Region: %s", self.filename)
         locations  = u.numpy_fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=self.MAX_CHUNKS)
@@ -265,10 +268,10 @@ class RegionFile(AnvilFile):
     )
     _re_filename = re.compile(r"r\.(?P<rx>-?\d+)\.(?P<rz>-?\d+)\.mca")
 
-    def __init__(self, *, regions: 'Regions' = None, pos: u.TPos2D = None, **kw):
+    def __init__(self, *args, regions: 'Regions' = None, pos: u.TPos2D = None, **kw):
+        super().__init__(*args, **kw)
         self.regions: Regions     = regions
         self.pos:     u.RegionPos = pos and u.RegionPos(*pos)
-        super().__init__(**kw)
 
     @property
     def world(self):
