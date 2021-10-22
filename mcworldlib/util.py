@@ -107,6 +107,10 @@ class BasePos(TPos):
         """New Position of the same type with coordinates truncated to integers"""
         return self.__class__(*map(int, self))
 
+    @property
+    def filepart(self) -> str:
+        return ".".join(map(str, self))
+
     @staticmethod
     def from_xz_tags(cls, parent: CompoundT[int], suffix: str = 'Pos') -> 'TPos2D':
         """Read from an NBT Compound containing x<suffix> and z<suffix> coord tags"""
@@ -207,6 +211,7 @@ class RegionPos(t.NamedTuple):  # TPos2D
     rx: int
     rz: int
 
+    filepart = BasePos.filepart
     __repr__ = functools.partialmethod(BasePos.__repr__, width=3)
 
     def to_chunk(self, offset: TPos2D = (0, 0)) -> 'ChunkPos':
@@ -218,6 +223,7 @@ class ChunkPos(t.NamedTuple):  # TPos2D
     cx: int
     cz: int
 
+    filepart = BasePos.filepart
     __repr__ = functools.partialmethod(BasePos.__repr__, width=4)
     from_xz_tags   = classmethod(BasePos.from_xz_tags)
     from_array_tag = classmethod(BasePos.from_array_tag)
