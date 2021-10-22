@@ -26,6 +26,7 @@ import os.path
 import pathlib
 import re
 import struct
+import typing as t
 import zlib
 
 import numpy
@@ -55,6 +56,7 @@ COMPRESSION_TYPES = (
 )
 
 log = logging.getLogger(__name__)
+T = t.TypeVar('T', bound=c.Chunk)
 
 
 class RegionError(u.MCError): pass
@@ -409,9 +411,9 @@ class RegionChunk(c.Chunk):
         return self.region.pos.to_chunk(self.pos)
 
     @classmethod
-    def parse(cls, buff,
+    def parse(cls: t.Type[T], buff,
               region: AnvilFile = None, pos=None, timestamp=None,
-              *args, **kwargs) -> 'RegionChunk':
+              *args, **kwargs) -> T:
         """
         https://minecraft.fandom.com/wiki/Region_file_format#Chunk_data
         https://www.reddit.com/r/technicalminecraft/comments/e4wxb6/
@@ -437,7 +439,7 @@ class RegionChunk(c.Chunk):
             raise ChunkError('External MCC data file is not yet supported')
 
         data = cls.decompress[compression](buff.read(length))
-        self: 'RegionChunk' = super().parse(io.BytesIO(data), *args, **kwargs)
+        self: T = super().parse(io.BytesIO(data), *args, **kwargs)
 
         self.region = region
         self.pos = pos
