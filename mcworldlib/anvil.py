@@ -106,8 +106,8 @@ class AnvilFile(collections.abc.MutableMapping):
         self = cls(filename=filename or getattr(buff, 'name', None), **initkw)
 
         log.debug("Loading Region: %s", self.filename)
-        locations  = numpy.fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=self.MAX_CHUNKS)
-        timestamps = numpy.fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=self.MAX_CHUNKS)
+        locations  = u.numpy_fromfile(buff, dtype=f'>u{CHUNK_LOCATION_BYTES}',  count=self.MAX_CHUNKS)
+        timestamps = u.numpy_fromfile(buff, dtype=f'>u{CHUNK_TIMESTAMP_BYTES}', count=self.MAX_CHUNKS)
         for index, (location, timestamp) in enumerate(zip(locations, timestamps)):
             if location == 0:
                 continue

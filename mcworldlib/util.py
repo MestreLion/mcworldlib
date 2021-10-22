@@ -26,11 +26,14 @@ __all__ = [
 
 import enum
 import functools
+import io
 import os.path
 import platform
 import pprint
 import time
 import typing as t
+
+import numpy
 
 
 # platform-dependent minecraft directory paths
@@ -43,6 +46,10 @@ CHUNK_GRID = (32, 32)  # (X, Z) chunks in each region file = 1024 chunks per reg
 CHUNK_SIZE = (16, 16)  # (X, Z) blocks in each chunk
 SECTION_HEIGHT = 16    # chunk section height in blocks
 
+# General type aliases
+AnyPath = t.Union[str, bytes, os.PathLike]
+AnyFile = t.Union[AnyPath, io.IOBase]
+
 # Pos stuff...
 NumT = t.TypeVar('NumT', int, float)
 TPos:   't.TypeAlias' = t.Tuple[NumT, ...]            # Any 2D/3D *Pos
@@ -54,7 +61,6 @@ T = t.TypeVar('T')
 KT = t.TypeVar('KT', bound=t.Hashable)
 VT = t.TypeVar('VT')
 Pos2DT = t.TypeVar('Pos2DT', bound=TPos2D)
-AnyPath = t.Union[str, bytes, os.PathLike]
 LazyFileT = t.Union[AnyPath, VT]
 
 # To avoid importing nbt
@@ -322,3 +328,26 @@ def pretty(obj, indent=4) -> None:
         return pprint.pprint(obj, indent=indent)
 
     print(f(indent=indent))
+
+
+def numpy_fromfile(file: AnyFile, dtype=float, count: int = -1):
+    """numpy.fromfile() wrapper, handling io.BytesIO file-like streams.
+
+    Numpy requires open files to be actual files on disk, i.e., must support
+    file.fileno(), so it fails with file-like streams such as io.BytesIO().
+
+    If numpy.fromfile() fails due to no file.fileno() support, this wrapper
+    reads the required bytes from file and redirects the call to
+    numpy.frombuffer().
+
+    See https://github.com/numpy/numpy/issues/2230
+    """
+    # From numpy 1.20 onwards: dtype: numpy.typing.DTypeLike
+    try:
+        return numpy.fromfile(file, dtype=dtype, count=count)
+    except io.UnsupportedOperation as e:
+        if not (e.args and e.args[0] == 'fileno' and isinstance(file, io.IOBase)):
+            raise  # Nothing I can do about it
+        dtype = numpy.dtype(dtype)
+        buffer = file.read(dtype.itemsize * count)
+        return numpy.frombuffer(buffer, dtype=dtype, count=count)
