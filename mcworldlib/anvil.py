@@ -265,7 +265,7 @@ class RegionFile(AnvilFile):
 
     def __init__(self, *, regions: 'Regions' = None, pos: u.TPos2D = None, **kw):
         self.regions: Regions     = regions
-        self.pos:     u.RegionPos = u.RegionPos(*pos)
+        self.pos:     u.RegionPos = pos and u.RegionPos(*pos)
         super().__init__(**kw)
 
     @property
@@ -403,7 +403,9 @@ class RegionChunk(c.Chunk):
         self.dirty:         bool        = True  # For now
 
     @property
-    def world_pos(self):
+    def world_pos(self) -> u.ChunkPos:
+        if not self.region or not self.region.pos:
+            return self.pos
         return self.region.pos.to_chunk(self.pos)
 
     @classmethod
@@ -477,7 +479,7 @@ class RegionChunk(c.Chunk):
     def __str__(self):
         """Just like NTBExplorer!"""
         return (f"<Chunk [{', '.join(f'{_:2}' for _ in self.pos)}]"
-                f" from Region {self.region.pos}"
+                f" from Region {self.region.pos or ()}"
                 f" in world at {self.world_pos}"
                 f" saved on {u.isodate(self.timestamp)}>")
 
