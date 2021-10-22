@@ -32,6 +32,8 @@ from nbtlib.tag import (
     write_string  as _write_string,
 )
 from nbtlib.tag import *
+# noinspection PyProtectedMember, PyUnresolvedReferences
+from nbtlib.tag import Array  # Not in __all__, but used by others
 # noinspection PyUnresolvedReferences
 from nbtlib.nbt import File as _File, load as load_dat  # could be File.load
 # noinspection PyUnresolvedReferences
