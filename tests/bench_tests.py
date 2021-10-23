@@ -129,9 +129,9 @@ def unpack(tag: mc.AnyTag) -> object:
 
 
 # --------------------------------------------------------------------------
-# Main
+# Suites
 
-def main():
+def original():
     print("Collecting data")
     chunk: mc.Root = measure(load_mcc)
     region: t.Dict[mc.ChunkPos, mc.RegionChunk] = measure(load_region)
@@ -159,7 +159,7 @@ def main():
         # Already ordered from Best to Worst
         measure(mpack, data)
         measure(write, data)
-        # measure(snbt, data)
+        measure(snbt, data)  # Painfully slow
 
     print("\nHashing tests")
     for label, data in ((_[0], mpack(_[1])) for _ in sources):
@@ -171,6 +171,14 @@ def main():
         measure(md5, data)
 
 
+# --------------------------------------------------------------------------
+# Main
+
+def main():
+    if '--original' in sys.argv:
+        original()
+
+
 if __name__ == '__main__':
     try:
         main()
@@ -178,26 +186,32 @@ if __name__ == '__main__':
         pass
 
 # Collecting data
-#   0.0015	BufferedReader.read	-> <class 'bytes'> (3,379,200)
-#   0.0015	loadfile	-> <class '_io.BytesIO'>
-#   0.0364	decompress	-> <class 'bytes'> (24,460,279)
-#   5.8933	Chunk.parse	-> <class 'mcworldlib.chunk.Chunk'> (2)
-#   5.9327	load_mcc	-> <class 'mcworldlib.chunk.Chunk'> (2)
+#   0.0013	BufferedReader.read	-> <class 'bytes'> (3,379,200)
+#   0.0013	loadfile	-> <class '_io.BytesIO'>
+#   0.0366	decompress	-> <class 'bytes'> (24,460,279)
+#   5.6215	Root.parse	-> <class 'mcworldlib.nbt.Root'> (2)
+#   5.6609	load_mcc	-> <class 'mcworldlib.nbt.Root'> (2)
 #   0.0027	BufferedReader.read	-> <class 'bytes'> (7,405,568)
 #   0.0028	loadfile	-> <class '_io.BytesIO'>
-#   1.5220	AnvilFile.parse	-> <class 'mcworldlib.anvil.RegionFile'> (1,024)
-#   1.5248	load_region	-> <class 'mcworldlib.anvil.RegionFile'> (1,024)
-#   0.0000	Compound	-> <class 'nbtlib.tag.Compound'> (1,024)
+#   1.4346	AnvilFile.parse	-> <class 'mcworldlib.anvil.RegionFile'> (1,024)
+#   1.4374	load_region	-> <class 'mcworldlib.anvil.RegionFile'> (1,024)
+#   0.0000	Root	-> <class 'mcworldlib.nbt.Root'> (1,024)
+#
+# Integrity checks
+# OK: msg_pack/unpack(MCC Chunk)
+# OK: write/parse(MCC Chunk)
+# OK: msg_pack/unpack(SuperCompound)
+# OK: write/parse(SuperCompound)
 #
 # Serializing tests
 # MCC Chunk
-#   0.2101	mpack	-> <class 'bytes'> (21,875,554)
-#   2.0058	write	-> <class 'bytes'> (24,460,279)
-#   4.0491	snbt	-> <class 'str'> (31,037,955)
+#   0.2070	mpack	-> <class 'bytes'> (21,875,554)
+#   2.0725	write	-> <class 'bytes'> (24,460,279)
+#   4.0492	snbt	-> <class 'str'> (31,037,955)
 # SuperCompound
-#   0.1697	mpack	-> <class 'bytes'> (39,606,077)
-#   1.0542	write	-> <class 'bytes'> (5,089,152)
-#  38.8854	snbt	-> <class 'str'> (90,493,140)
+#   0.1740	mpack	-> <class 'bytes'> (39,606,077)
+#   0.4645	write	-> <class 'bytes'> (39,189,550)
+#  37.9293	snbt	-> <class 'str'> (90,493,140)
 #
 # Hashing tests
 # MCC Chunk
