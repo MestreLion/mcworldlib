@@ -14,6 +14,8 @@ __all__ = ['load', 'World']
 
 import logging
 import os.path
+import pathlib
+import typing as t
 
 import tqdm
 
@@ -148,6 +150,37 @@ class World:
     def save(self):
         # TODO: Save the Regions!
         self.level.save()
+
+    def walk(self, progress=False
+             ) -> t.Tuple[os.PathLike,
+                          t.Union[level.Level, anvil.RegionFile],
+                          nbt.Root,
+                          t.Tuple[nbt.Path, t.Union[str, int], nbt.AnyTag]]:
+        """Perform nbt.walk() for every NBT Root in the entire World.
+
+        Yield (File Source, Path, NBT Root, Walk Data) for every tag.
+
+        Path might not be a real path, but derived from Source and NBT Root.
+        The real path can (usually) be obtained from Source.filename.
+
+        NBT Root will be the same object as Source if it's a file like level.dat,
+        or distinct such as chunks and their regions. A region is a file but not
+        an NBT tag, and a chunk is an NBT Root but not a file of its own.
+
+        For now, only yields from World.level and from Regions in World.dimensions
+        """
+        def relpath(*paths):
+            return pathlib.Path(*paths).relative_to(self.path)
+
+        for data in nbt.walk(self.level):
+            yield relpath(self.level.filename), self.level, self.level, data
+
+        for dimension, category, chunk in self.get_all_chunks(progress=progress):
+            region = chunk.region
+            pos = f"c.{chunk.pos.filepart}@{chunk.world_pos.filepart}"
+            fspath = relpath(chunk.region.filename, pos)
+            for data in nbt.walk(chunk):
+                yield fspath, region, chunk, data
 
     @classmethod
     def load(cls, path: u.AnyPath, **kwargs):

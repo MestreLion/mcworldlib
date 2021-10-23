@@ -154,6 +154,52 @@ class File(Root, _File):
         return super().__repr__().replace(f"<{name}", f"<{name} {self.filename!r}", 1)
 
 
+def walk(root: AnyTag, sort=False, _path: Path = Path()
+         ) -> t.Tuple[Path, t.Union[str, int], AnyTag]:
+    """Yield (path, name/index, tag) for each child of a root tag, recursively.
+
+    The root tag itself is not yielded, and it is only considered a container
+    if it is a Compound, a List of Compounds, or a List of Lists. Any other tag,
+    including Arrays and Lists of other types, are considered leaf tags and not
+    recurred into.
+
+    name is the tag key (or index) location in its (immediate) parent tag, so:
+        parent[name] == tag
+
+    path is the parent tag location in the root tag, compatible with the format
+    described at https://minecraft.fandom.com/wiki/NBT_path_format. So:
+        root[path][name] == root[path[name]] == tag
+    That holds true even when path is empty, i.e., when the parent tag is root.
+    """
+    # TODO: NBTExplorer-like sorting mode:
+    # - Case insensitive sorting on key names
+    # - Compounds first, then Lists (of all types), then leaf values
+    # - For Compounds, Lists and Arrays, include item count
+    items: t.Union[t.Iterable[t.Tuple[str, Compound]],
+                   t.Iterable[t.Tuple[int, List]]]
+
+    if isinstance(root, Compound):
+        items = root.items()
+        if sort:
+            items = sorted(items)
+    elif isinstance(root, List) and root.subtype in (Compound, List):
+        items = enumerate(root)  # always sorted
+    else:
+        return
+
+    for name, item in items:
+        yield _path, name, item
+        yield from walk(item, sort=sort, _path=_path[name])
+
+
+def nbt_explorer(tag: AnyTag) -> None:
+    """An idea for the future..."""
+    for path, name, tag in walk(tag, sort=True):
+        value = (f"{tag.__class__.__name__}({len(tag)})"
+                 if isinstance(tag, (Compound, List, Array)) else repr(tag))
+        print(f"{path}\t{name}\t{value}")
+
+
 # Add .pretty() method to all NBT tags
 _Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 

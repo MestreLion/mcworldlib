@@ -29,3 +29,7 @@ __project__ = "MCWorldLib"
 __author__  = "Rodrigo Silva (MestreLion)"
 __email__   = "minecraft@rodrigosilva.com"
 __version__ = '0.2019.12'
+
+# Renaming stuff for the API
+walk_nbt = walk  # from .nbt
+del walk
