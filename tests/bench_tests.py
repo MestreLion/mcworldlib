@@ -171,12 +171,39 @@ def original():
         measure(md5, data)
 
 
+def load_world_regions(world: mc.World) -> t.Dict[str, mc.RegionFile]:
+    regions: t.Dict[str, mc.RegionFile] = {}
+    for category in ('region', 'entities'):
+        for pos, region in world.dimensions[mc.OVERWORLD][category].items():
+            regions[f"{category}.r.{pos.filepart}"] = region
+    return regions
+
+
+def save_world_regions(regions: t.Dict[str, mc.RegionFile]):
+    for region in regions.values():
+        region.save()
+
+
+def new_world():
+    world: mc.World = measure(mc.load, '../data/New World')
+    # force-load all regions
+    regions: t.Dict[str, mc.RegionFile] = measure(load_world_regions, world)
+    chunks = [*measure(world.get_all_chunks, progress=False)]
+    measure(save_world_regions, regions)
+    return chunks
+
+
 # --------------------------------------------------------------------------
 # Main
 
 def main():
     if '--original' in sys.argv:
-        original()
+        measure(original)
+        return
+
+    if '--new-world' in sys.argv:
+        measure(new_world)
+        return
 
 
 if __name__ == '__main__':
@@ -185,6 +212,17 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
 
+# --------------------------------------------------------------------------
+# Test Results
+
+# ### New World
+#  0.0049	World.load	-> <class 'mcworldlib.world.World'>
+#  3.3986	load_world_regions	-> <class 'dict'> (12)
+#  0.0000	World.get_all_chunks	-> <class 'generator'>
+#  2.4423	save_world_regions	-> <class 'NoneType'>
+#  5.8472	new_world	-> <class 'list'> (2,168)
+
+# ### Original
 # Collecting data
 #   0.0013	BufferedReader.read	-> <class 'bytes'> (3,379,200)
 #   0.0013	loadfile	-> <class '_io.BytesIO'>
