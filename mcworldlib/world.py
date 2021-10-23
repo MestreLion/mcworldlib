@@ -63,7 +63,9 @@ class World:
         super().__init__(**kwargs)
         self.path:       u.AnyPath   = path
         self.level:      level.Level = levelobj
-        self.dimensions: dict        = dict(dimensions or {})
+        self.dimensions: \
+            t.Dict[u.Dimension,
+                   t.Dict[str, anvil.Regions]] = dict(dimensions or {})
 
     @property
     def name(self):

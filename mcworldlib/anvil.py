@@ -57,6 +57,7 @@ COMPRESSION_TYPES = (
 
 log = logging.getLogger(__name__)
 T = t.TypeVar('T', bound=c.Chunk)
+RT = t.TypeVar('RT', bound='AnvilFile')
 
 
 class RegionError(u.MCError): pass
@@ -94,19 +95,19 @@ class AnvilFile(collections.abc.MutableMapping):
         self._chunks = {_.pos: _ for _ in chunks}
 
     @classmethod
-    def load(cls, filename, **initkw):
+    def load(cls: t.Type[RT], filename, **initkw) -> RT:
         """Load anvil file from a path"""
         initkw['filename'] = filename
         with open(filename, 'rb') as buff:
             return cls.parse(buff, **initkw)
 
     @classmethod
-    def parse(cls, buff, **initkw):
+    def parse(cls: t.Type[RT], buff: t.BinaryIO, **initkw) -> RT:
         """Parse region from file-like object, build an instance and return it
 
         https://minecraft.gamepedia.com/Region_file_format
         """
-        self = cls(**initkw)
+        self: RT = cls(**initkw)
         if not self.filename:
             self.filename = getattr(buff, 'name', "")
 
@@ -321,12 +322,13 @@ class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
     def _is_loaded(self, pos, item) -> bool:
         return isinstance(item, RegionFile)
 
-    def _load_item(self, pos: u.TPos2D, path: u.AnyPath) -> (u.RegionPos, RegionFile):
-        region = RegionFile.load(path, regions=self, pos=pos)
+    def _load_item(self, pos: u.TPos2D, path: u.AnyPath
+                   ) -> t.Tuple[u.RegionPos, RegionFile]:
+        region: 'RegionFile' = RegionFile.load(path, regions=self, pos=pos)
         return region.pos, region
 
     @classmethod
-    def load(cls, world, dimension, category):
+    def load(cls, world, dimension: u.Dimension, category: str) -> 'Regions':
         path = os.path.join(world.path, dimension.subfolder(), category)
         self = cls.load_from_path(path)
         self.world = world
@@ -334,7 +336,7 @@ class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
         return self
 
     @classmethod
-    def load_from_path(cls, path, recursive=False):
+    def load_from_path(cls, path: u.AnyPath, recursive=False) -> 'Regions':
         log.debug("Loading data in %s", path)
         self = cls()
 

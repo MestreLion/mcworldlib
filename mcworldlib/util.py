@@ -48,7 +48,7 @@ SECTION_HEIGHT = 16    # chunk section height in blocks
 
 # General type aliases
 AnyPath = t.Union[str, bytes, os.PathLike]
-AnyFile = t.Union[AnyPath, io.IOBase]
+AnyFile = t.Union[AnyPath, t.BinaryIO]
 
 # Pos stuff...
 NumT = t.TypeVar('NumT', int, float)
