@@ -68,7 +68,7 @@ class Root(Compound):
         'root_name',
     )
 
-    def __init__(self, root_name: str = "", *args, **kwargs):
+    def __init__(self, *args, root_name: str = "", **kwargs):
         super().__init__(*args, **kwargs)
         self.root_name: str = root_name
 

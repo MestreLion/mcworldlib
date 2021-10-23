@@ -1,6 +1,7 @@
 import io
 import hashlib
 import json
+import sys
 import time
 # import timeit  # Soon...
 import typing as t
@@ -101,7 +102,8 @@ def ultrajson(obj: object) -> str:
     return ujson.dumps(obj)
 
 
-def picking(_data: object) -> bytes: ...
+def objjson(_obj: object) -> bytes: ...  # ojson
+def picking(_obj: object) -> bytes: ...
 def walk(_tag: mc.AnyTag) -> t.Tuple: ...
 
 
@@ -114,11 +116,11 @@ def load_region() -> mc.RegionFile:
     return measure(mc.RegionFile.parse, f, filename=filename)
 
 
-def load_mcc() -> mc.Chunk:
+def load_mcc() -> mc.Root:
     # Not using File.load_mcc() directly to decouple zlib and parse timings
     data = measure(loadfile, '../data/c.-96.-8.mcc').getvalue()
     data = measure(zlib.decompress, data)
-    return measure(mc.Chunk.parse, io.BytesIO(data))
+    return measure(mc.Root.parse, io.BytesIO(data))
 
 
 def unpack(tag: mc.AnyTag) -> object:
@@ -131,24 +133,36 @@ def unpack(tag: mc.AnyTag) -> object:
 
 def main():
     print("Collecting data")
-    chunk: mc.Chunk = measure(load_mcc)
-    region: t.Dict[mc.ChunkPos, mc.Chunk] = measure(load_region)
+    chunk: mc.Root = measure(load_mcc)
+    region: t.Dict[mc.ChunkPos, mc.RegionChunk] = measure(load_region)
 
     # A "SuperCompound" of all region chunks just to test nbt.write
-    chunks: t.Dict[str, mc.RegionChunk]  # key = str(chunk.pos)
-    chunks = measure(mc.Compound, {str(k): v for k, v in region.items()})
+    chunks: t.Dict[str, mc.Root]  # key = str(chunk.pos)
+    chunks = measure(mc.Root, {str(k): mc.Compound(v) for k, v in region.items()})
+
+    sources = (
+        ("MCC Chunk", chunk),
+        ("SuperCompound", chunks)
+    )
+
+    if '--verify' in sys.argv:
+        print("\nIntegrity checks")
+        for label, data in sources:
+            assert msgpack.unpackb(mpack(data)) == data
+            print(f"OK: msg_pack/unpack({label})")
+            assert data.parse(io.BytesIO(write(data))) == data
+            print(f"OK: write/parse({label})")
 
     print("\nSerializing tests")
-    for label, data in (("MCC Chunk", chunk), ("SuperCompound", chunks)):
+    for label, data in sources:
         print(label)
         # Already ordered from Best to Worst
         measure(mpack, data)
         measure(write, data)
-        measure(snbt, data)
+        # measure(snbt, data)
 
     print("\nHashing tests")
-    for label, data in (("MCC Chunk",     mpack(chunk)),
-                        ("SuperCompound", mpack(chunks))):
+    for label, data in ((_[0], mpack(_[1])) for _ in sources):
         print(label)
         measure(xxh3, data)
         measure(xxh128, data)
@@ -158,7 +172,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
 
 # Collecting data
 #   0.0015	BufferedReader.read	-> <class 'bytes'> (3,379,200)
