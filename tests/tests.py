@@ -221,7 +221,7 @@ def inventory_diamonds(world=None, save=False):
 def readme(world=None, save=False):
     if not world: world = load_world()
     inventory_diamonds(world=world, save=save)
-    chunks = world.entities[mc.Dimension.OVERWORLD][0, 0]
+    chunks = world.entities[mc.OVERWORLD][0, 0]
     for chunk in chunks.values():
         for entity in chunk.entities:
             print(entity)

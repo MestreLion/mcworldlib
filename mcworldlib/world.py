@@ -9,7 +9,13 @@ Exported items:
     World -- Class representing a Minecraft World save directory and associated data.
 """
 
-__all__ = ['load', 'World']
+__all__ = [
+    'OVERWORLD',
+    'THE_NETHER',
+    'THE_END',
+    'World',
+    'load',
+]
 
 
 import logging
@@ -25,6 +31,10 @@ from . import nbt
 from . import util as u
 
 log = logging.getLogger(__name__)
+
+OVERWORLD  = u.Dimension.OVERWORLD
+THE_NETHER = u.Dimension.THE_NETHER
+THE_END    = u.Dimension.THE_END
 
 
 class WorldNotFoundError(u.MCError, IOError): pass
@@ -87,7 +97,7 @@ class World:
     def chunk_count(self):  # FIXME!
         return sum(len(_) for _ in self.regions)
 
-    def get_chunks(self, progress=True, dimension=u.Dimension.OVERWORLD, category='region'):
+    def get_chunks(self, progress=True, dimension=OVERWORLD, category='region'):
         """Yield all chunks in a given dimension and category, Overworld Regions by default"""
         regions = self.dimensions[dimension][category].values()
         if progress:
@@ -109,7 +119,7 @@ class World:
                     yield dimension, category, chunk
 
     def get_chunk(self, chunk_coords: u.TPos2D,
-                  dimension=u.Dimension.OVERWORLD, category='region') -> anvil.RegionChunk:
+                  dimension=OVERWORLD, category='region') -> anvil.RegionChunk:
         """Return the chunk at coordinates (cx, cz)"""
         if not isinstance(chunk_coords, u.ChunkPos):
             chunk_coords = u.ChunkPos(*chunk_coords)
@@ -121,12 +131,12 @@ class World:
                                    f" [Region {region}, offset {chunk}]")
 
     def get_chunk_at(self, coords: u.TPos3D,
-                     dimension=u.Dimension.OVERWORLD, category='region') -> anvil.RegionChunk:
+                     dimension=OVERWORLD, category='region') -> anvil.RegionChunk:
         if not isinstance(coords, u.Pos):
             coords = u.Pos(*coords)
         return self.get_chunk(coords.chunk, dimension=dimension, category=category)
 
-    def get_block_at(self, coords: u.TPos3D, dimension=u.Dimension.OVERWORLD):
+    def get_block_at(self, coords: u.TPos3D, dimension=OVERWORLD):
         if not isinstance(coords, u.Pos):
             coords = u.Pos(*coords)
         chunk = self.get_chunk_at(coords, dimension=dimension, category='region')

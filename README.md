@@ -89,8 +89,8 @@ category, similarly with `World.entities` and `World.poi`:
     <Dimension.THE_END: 1>: <Regions(0 regions)>,
     <Dimension.THE_NETHER: -1>: <Regions(0 regions)>}
 
->>> regions = world.regions[mc.Dimension.OVERWORLD]
->>> regions is world.dimensions[mc.Dimension.OVERWORLD]['region']
+>>> regions = world.regions[mc.OVERWORLD]
+>>> regions is world.dimensions[mc.OVERWORLD]['region']
 True
 
 ```
@@ -271,7 +271,7 @@ Have fun, you millionaire!
 
 More fun things to do:
 ```pycon
->>> chunks = world.entities[mc.Dimension.OVERWORLD][0, 0]
+>>> chunks = world.entities[mc.OVERWORLD][0, 0]
 >>> for chunk in chunks.values():
 ...     for entity in chunk.entities:
 ...         print(entity)
