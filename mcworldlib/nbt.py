@@ -155,7 +155,7 @@ class File(Root, _File):
 
 
 def walk(root: AnyTag, sort=False, _path: Path = Path()
-         ) -> t.Tuple[Path, t.Union[str, int], AnyTag]:
+         ) -> t.Iterator[t.Tuple[Path, t.Union[str, int], AnyTag]]:
     """Yield (path, name/index, tag) for each child of a root tag, recursively.
 
     The root tag itself is not yielded, and it is only considered a container
@@ -202,6 +202,11 @@ def nbt_explorer(tag: AnyTag) -> None:
 
 # Add .pretty() method to all NBT tags
 _Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
+
+_Base.is_leaf = property(
+    fget=lambda _: not isinstance(_, (Compound, List, Array)),
+    doc="If this tag an immutable tag and not a Mutable Collection."
+        " Non-leafs are the containers excluding String: Compound, List, Array")
 
 # Fix String.__str__. Not needed in modern nbtlib versions
 String.__str__ = lambda self: str.__str__(self)

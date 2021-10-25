@@ -127,6 +127,7 @@ class World:
             chunk_coords = u.ChunkPos(*chunk_coords)
         region, chunk = chunk_coords.region_and_offset
         try:
+            # noinspection PyTypeChecker
             return self.dimensions[dimension][category][region][chunk]
         except KeyError:
             raise anvil.ChunkError(f"Chunk does not exist: {chunk_coords}"

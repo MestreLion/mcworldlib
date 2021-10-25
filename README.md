@@ -243,25 +243,7 @@ Adding 64 blocks of Diamond to inventory slot 8
 Adding 64 blocks of Diamond to inventory slot 9
 Adding 64 blocks of Diamond to inventory slot 10
 Adding 64 blocks of Diamond to inventory slot 14
-Adding 64 blocks of Diamond to inventory slot 15
-Adding 64 blocks of Diamond to inventory slot 16
-Adding 64 blocks of Diamond to inventory slot 17
-Adding 64 blocks of Diamond to inventory slot 18
-Adding 64 blocks of Diamond to inventory slot 19
-Adding 64 blocks of Diamond to inventory slot 20
-Adding 64 blocks of Diamond to inventory slot 21
-Adding 64 blocks of Diamond to inventory slot 22
-Adding 64 blocks of Diamond to inventory slot 23
-Adding 64 blocks of Diamond to inventory slot 24
-Adding 64 blocks of Diamond to inventory slot 25
-Adding 64 blocks of Diamond to inventory slot 26
-Adding 64 blocks of Diamond to inventory slot 27
-Adding 64 blocks of Diamond to inventory slot 29
-Adding 64 blocks of Diamond to inventory slot 30
-Adding 64 blocks of Diamond to inventory slot 31
-Adding 64 blocks of Diamond to inventory slot 32
-Adding 64 blocks of Diamond to inventory slot 33
-Adding 64 blocks of Diamond to inventory slot 34
+...
 Adding 64 blocks of Diamond to inventory slot 35
 
 >>> world.save()  # Go on, we both know you want it. I won't judge you.
