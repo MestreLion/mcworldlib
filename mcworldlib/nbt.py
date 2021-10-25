@@ -241,7 +241,7 @@ def deep_walk(
                                  _path=_path[key], _level=_level + 1)
 
 
-def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> t.Iterator[str]:
+def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
     """Walk NBT just like NBT Explorer!
 
     - Compounds first, then Lists (of all types), then leaf values. Arrays last
@@ -275,7 +275,7 @@ def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> t.Iterator[st
             "⊞" if container else
             "─"  # leaf
         )
-        yield f"{margin}{prefix}{marker} {key:2}: {value}"
+        print(f"{margin}{prefix}{marker} {key:2}: {value}")
         previous = level
         if expanded and level:
             margin += ((" " if last else "│") + " " * (width + offset))

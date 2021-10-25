@@ -281,9 +281,63 @@ Chicken at (   6,  64, 217)
 
 ```
 
+How about some NBT Explorer nostalgia?
+
+```pycon
+>>> mc.nbt_explorer(world.level)
+⊟ Data: 42 entries
+├──⊞ CustomBossEvents: 0 entries
+├──⊟ DataPacks: 2 entries
+│  ├──⊟ Disabled: 1 entries
+│  │  ╰───  0: Fabric Mods
+│  ╰──⊟ Enabled: 1 entries
+│     ╰───  0: vanilla
+...
+├──⊟ Player: 37 entries
+│  ├──⊟ abilities: 7 entries
+│  │  ├─── flying: 0b
+...
+│  │  ╰─── walkSpeed: 0.10000000149011612f
+│  ├──⊟ Brain: 1 entries
+│  │  ╰──⊞ memories: 0 entries
+...
+│  ├──⊟ Inventory: 11 entries
+│  │  ├──⊟  0: 4 entries
+│  │  │  ├──⊟ tag: 1 entries
+│  │  │  │  ╰─── Damage: 0
+│  │  │  ├─── Count: 1b
+│  │  │  ├─── id: minecraft:stone_axe
+│  │  │  ╰─── Slot: 0b
+...
+│  │  ╰──⊟ 10: 4 entries
+│  │     ├──⊟ tag: 1 entries
+│  │     │  ╰─── Damage: 18
+│  │     ├─── Count: 1b
+│  │     ├─── id: minecraft:wooden_pickaxe
+│  │     ╰─── Slot: 28b
+...
+│  ├─── XpTotal: 37
+│  ╰──⊕ UUID: 4 entries
+├──⊟ Version: 3 entries
+│  ├─── Id: 2730
+│  ├─── Name: 1.17.1
+│  ╰─── Snapshot: 0b
+...
+├──⊞ ScheduledEvents: 0 entries
+├──⊟ ServerBrands: 1 entries
+│  ╰───  0: fabric
+├─── allowCommands: 0b
+...
+├─── WanderingTraderSpawnDelay: 19200
+╰─── WasModded: 1b
+
+```
+You want to click that tree, don't you? Sweet `Array` "icon" for `UUID`!
+
 Test yourself all the examples in this document:
 
     python3 -m doctest -f -o ELLIPSIS -o NORMALIZE_WHITESPACE README.md
+    git checkout data/
 
 ---
 Contributing
