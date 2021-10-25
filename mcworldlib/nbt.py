@@ -178,6 +178,7 @@ def walk(root: AnyTag, sort=False, _path: Path = Path()
     items: t.Union[t.Iterable[t.Tuple[str, Compound]],
                    t.Iterable[t.Tuple[int, List]]]
 
+    # sort_func: sorted
     if isinstance(root, Compound):
         items = root.items()
         if sort:
@@ -192,21 +193,10 @@ def walk(root: AnyTag, sort=False, _path: Path = Path()
         yield from walk(item, sort=sort, _path=_path[name])
 
 
-def nbt_explorer(tag: AnyTag) -> None:
-    """An idea for the future..."""
-    for path, name, tag in walk(tag, sort=True):
-        value = (f"{tag.__class__.__name__}({len(tag)})"
-                 if isinstance(tag, (Compound, List, Array)) else repr(tag))
-        print(f"{path}\t{name}\t{value}")
-
-
 def deep_walk(
     root:       AnyTag,
     key_sorted: t.Callable[[t.Tuple[str, AnyTag]], t.Any] = None,
     collapse:   t.Callable[[AnyTag], bool]  = lambda _: isinstance(_, (Array,)),
-    fcontainer: t.Callable[[AnyTag], t.Any] = lambda _: ("-", len(_)),  # defaults to fleaf
-    fcollapsed: t.Callable[[AnyTag], t.Any] = lambda _: ("+", len(_)),  # defaults to fcontainer
-    fleaf:      t.Callable[[AnyTag], t.Any] = None,                     # defaults to tag itself
     _path:      Path = Path(),
     _level:     int = 0,  # == len(path)
 )   ->          t.Iterator[t.Tuple[Path, t.Union[str, int], t.Any, bool, bool, AnyTag]]:
@@ -225,20 +215,50 @@ def deep_walk(
         # noinspection PyUnresolvedReferences
         is_container = not tag.is_leaf
         is_collapsed = is_container and collapse and collapse(tag)
-
-        # Determine what to yield as item
-        # The convoluted evaluation order is to allow sensible fallbacks:
-        # colapsed container > container > leaf > item
-        if   is_container and is_collapsed and fcollapsed: item = fcollapsed(tag)
-        elif is_container and fcontainer:                  item = fcontainer(tag)
-        elif fleaf:                                        item = fleaf(tag)
-        else:                                              item = tag
         yield tag, root, _level, _path, key, idx, is_container, is_collapsed
         if is_container and not is_collapsed:
-            yield from deep_walk(
-                tag, key_sorted=key_sorted, collapse=collapse,
-                fcollapsed=fcollapsed, fcontainer=fcontainer, fleaf=fleaf,
-                _path=_path[key], _level=_level+1)
+            yield from deep_walk(tag, key_sorted=key_sorted, collapse=collapse,
+                                 _path=_path[key], _level=_level + 1)
+
+
+def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
+    """Walk NBT just like NBT Explorer!
+
+    - Compounds first, then Lists (of all types), then leaf values. Arrays last
+    - Case insensitive sorting on key names
+    - Include item count for Compounds, Lists and Arrays
+    - Arrays collapsed as leafs
+    """
+    data = deep_walk(
+        root,
+        collapse=lambda tg: isinstance(tg, Array),
+        key_sorted=lambda itm: (
+            not isinstance(itm[1], Compound),
+            not isinstance(itm[1], List),
+            isinstance(itm[1], Array),
+            itm[0].lower(),
+        ),
+    )
+    margin = ""
+    previous = 0
+    # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
+    for tag, parent, level, path, key, idx, container, collapsed in data:
+        value = f"{len(tag)} entries" if container else tag
+        expanded = container and not collapsed and len(tag) > 0
+        last  = idx == len(parent) - 1
+        prefix = (("╰" if last else "├") + ("─" * width)) if level else ""
+        if level < previous:
+            margin = margin[:-(width + 1 + offset) * (previous - level)]
+        marker = (
+            "⊟" if expanded  else
+            "⊕" if collapsed else
+            "⊞" if container else
+            "─"  # leaf
+        )
+        yield f"{margin}{prefix}{marker} {key:2}: {value}"
+        previous = level
+        if expanded and level:
+            margin += ((" " if last else "│") + " " * (width + offset))
 
 
 # Add .pretty() method to all NBT tags
