@@ -168,7 +168,7 @@ class World:
              ) -> t.Tuple[os.PathLike,
                           t.Union[level.Level, anvil.RegionFile],
                           nbt.Root,
-                          t.Tuple[nbt.Path, t.Union[str, int], nbt.AnyTag]]:
+                          t.Tuple[nbt.AnyTag, nbt.Path, t.Union[str, int]]]:
         """Perform nbt.walk() for every NBT Root in the entire World.
 
         Yield (File Source, Path, NBT Root, Walk Data) for every tag.
@@ -186,14 +186,14 @@ class World:
             return pathlib.Path(*paths).relative_to(self.path)
 
         for data in nbt.walk(self.level):
-            yield relpath(self.level.filename), self.level, self.level, data
+            yield relpath(self.level.filename), self.level, self.level, tuple(data[:4])
 
         for dimension, category, chunk in self.get_all_chunks(progress=progress):
             region = chunk.region
             pos = f"c.{chunk.pos.filepart}@{chunk.world_pos.filepart}"
             fspath = relpath(chunk.region.filename, pos)
             for data in nbt.walk(chunk):
-                yield fspath, region, chunk, data
+                yield fspath, region, chunk, tuple(data[:4])
 
     @classmethod
     def load(cls, path: u.AnyPath, **kwargs):

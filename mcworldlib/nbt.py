@@ -58,6 +58,11 @@ AnyTag: 't.TypeAlias' = t.Union[
     IntArray,
     LongArray,
 ]
+ContainerTag: 't.TypeAlias' = t.Union[
+    List,
+    Compound,
+    Array,
+]
 T = t.TypeVar('T', bound='Root')
 
 
@@ -154,52 +159,67 @@ class File(Root, _File):
         return super().__repr__().replace(f"<{name}", f"<{name} {self.filename!r}", 1)
 
 
-def walk(root: AnyTag, sort=False, _path: Path = Path()
-         ) -> t.Iterator[t.Tuple[Path, t.Union[str, int], AnyTag]]:
-    """Yield (path, name/index, tag) for each child of a root tag, recursively.
+def walk(
+    root: AnyTag, sort: bool = False
+) -> t.Iterator[t.Tuple[AnyTag, Path, t.Union[str, int], int, bool, bool, int, ContainerTag]]:
+    """deep_walk() wrapper with different defaults
 
-    The root tag itself is not yielded, and it is only considered a container
-    if it is a Compound, a List of Compounds, or a List of Lists. Any other tag,
+    Only walk into Compound, List of Compound, and Lists of List. Any other tag,
     including Arrays and Lists of other types, are considered leaf tags and not
     recurred into.
 
-    name is the tag key (or index) location in its (immediate) parent tag, so:
-        parent[name] == tag
-
-    path is the parent tag location in the root tag, compatible with the format
-    described at https://minecraft.fandom.com/wiki/NBT_path_format. So:
-        root[path][name] == root[path[name]] == tag
-    That holds true even when path is empty, i.e., when the parent tag is root.
+    If sort, sort COmpound keys case-insensitively. If not, do not sort keys at
+    all, yielding tags by insertion order.
     """
-    # TODO: NBTExplorer-like sorting mode:
-    # - Case insensitive sorting on key names
-    # - Compounds first, then Lists (of all types), then leaf values
-    # - For Compounds, Lists and Arrays, include item count
-    items: t.Union[t.Iterable[t.Tuple[str, Compound]],
-                   t.Iterable[t.Tuple[int, List]]]
-
-    # sort_func: sorted
-    if isinstance(root, Compound):
-        items = root.items()
-        if sort:
-            items = sorted(items)
-    elif isinstance(root, List) and root.subtype in (Compound, List):
-        items = enumerate(root)  # always sorted
-    else:
-        return
-
-    for name, item in items:
-        yield _path, name, item
-        yield from walk(item, sort=sort, _path=_path[name])
+    yield from deep_walk(
+        root,
+        collapse=lambda tg: (not isinstance(tg, (List[List], List[Compound]))
+                             and isinstance(tg, (Array, List))),
+        key_sorted=str.lower if sort else None,
+    )
 
 
 def deep_walk(
     root:       AnyTag,
     key_sorted: t.Callable[[t.Tuple[str, AnyTag]], t.Any] = None,
-    collapse:   t.Callable[[AnyTag], bool]  = lambda _: isinstance(_, (Array,)),
+    collapse:   t.Callable[[AnyTag], bool]  = None,
     _path:      Path = Path(),
     _level:     int = 0,  # == len(path)
-)   ->          t.Iterator[t.Tuple[Path, t.Union[str, int], t.Any, bool, bool, AnyTag]]:
+) -> t.Iterator[t.Tuple[AnyTag, Path, t.Union[str, int], int, bool, bool, int, ContainerTag]]:
+    """Yield a data tuple about each child of a root container tag, recursively.
+
+    Yielded tuple contains the following information:
+    - Tag: currently yielded tag
+    - Path: NBT Path location for the parent tag. See description below for details.
+    - Key: tag's location in its parent. See description below for details.
+    - Idx: tag's order in the enumeration of its parent's children. Same as Key if in List
+    - Is_collapsed: If tag is a container but not recursed into due to collapse function
+    - Is_container: If tag is a (mutable) container, i.e, Compound, List or Array
+    - Level: nesting/recursion level. 0 for root's immediate children. Same as len(Path)
+    - Parent: tag's parent. Same as Path[Key]
+
+    The root tag itself is not a yielded tag, and it is only considered a container
+    if it is a Compound, a List of Compounds, or a List of Lists. Any other tag,
+    including Arrays and Lists of other types, are considered leaf tags and not
+    recurred into.
+
+    Key will be a string if parent is a Compound, or an integer if List. It is
+    the tag name (or index) location in its (immediate) parent tag, so:
+        parent[key] == tag
+
+    Path is the parent tag location in the root tag, compatible with the format
+    described at https://minecraft.fandom.com/wiki/NBT_path_format. That holds
+    true even when path is empty, i.e., when the parent tag is root. So:
+        root[path][name] == root[path[name]] == tag
+
+    Collapse is a function that takes a container tag and returns if the tag
+    should be collapsed, i.e. not walked into, skipping its children. The tag
+    itself will still be yielded.
+
+    Key_sorted is a function that takes a (name, tag) to be passed to sorted()
+    as its key argument, to control sorting order of Compounds' items. If None,
+    sorted() will not be called.
+    """
     itertags: t.Iterable[t.Tuple[t.Union[str, int], AnyTag]]
     if isinstance(root, Compound):  # collections.abc.Mapping
         itertags = root.items()
@@ -215,13 +235,13 @@ def deep_walk(
         # noinspection PyUnresolvedReferences
         is_container = not tag.is_leaf
         is_collapsed = is_container and collapse and collapse(tag)
-        yield tag, root, _level, _path, key, idx, is_container, is_collapsed
+        yield tag, _path, key, idx, is_collapsed, is_container, _level, root
         if is_container and not is_collapsed:
             yield from deep_walk(tag, key_sorted=key_sorted, collapse=collapse,
                                  _path=_path[key], _level=_level + 1)
 
 
-def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
+def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> t.Iterator[str]:
     """Walk NBT just like NBT Explorer!
 
     - Compounds first, then Lists (of all types), then leaf values. Arrays last
@@ -242,7 +262,7 @@ def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
     margin = ""
     previous = 0
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
-    for tag, parent, level, path, key, idx, container, collapsed in data:
+    for tag, path, key, idx, collapsed, container, level, parent in data:
         value = f"{len(tag)} entries" if container else tag
         expanded = container and not collapsed and len(tag) > 0
         last  = idx == len(parent) - 1
