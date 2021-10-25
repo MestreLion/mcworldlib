@@ -200,6 +200,47 @@ def nbt_explorer(tag: AnyTag) -> None:
         print(f"{path}\t{name}\t{value}")
 
 
+def deep_walk(
+    root:       AnyTag,
+    key_sorted: t.Callable[[t.Tuple[str, AnyTag]], t.Any] = None,
+    collapse:   t.Callable[[AnyTag], bool]  = lambda _: isinstance(_, (Array,)),
+    fcontainer: t.Callable[[AnyTag], t.Any] = lambda _: ("-", len(_)),  # defaults to fleaf
+    fcollapsed: t.Callable[[AnyTag], t.Any] = lambda _: ("+", len(_)),  # defaults to fcontainer
+    fleaf:      t.Callable[[AnyTag], t.Any] = None,                     # defaults to tag itself
+    _path:      Path = Path(),
+    _level:     int = 0,  # == len(path)
+)   ->          t.Iterator[t.Tuple[Path, t.Union[str, int], t.Any, bool, bool, AnyTag]]:
+    itertags: t.Iterable[t.Tuple[t.Union[str, int], AnyTag]]
+    if isinstance(root, Compound):  # collections.abc.Mapping
+        itertags = root.items()
+        if key_sorted:
+            itertags = sorted(itertags, key=key_sorted)
+    elif isinstance(root, (List, Array)):  # collections.abc.MutableSequence
+        itertags = enumerate(root)  # always sorted
+    else:
+        return
+
+    for idx, (key, tag) in enumerate(itertags):
+        # Determine if tag will not be walked into even if it's a container
+        # noinspection PyUnresolvedReferences
+        is_container = not tag.is_leaf
+        is_collapsed = is_container and collapse and collapse(tag)
+
+        # Determine what to yield as item
+        # The convoluted evaluation order is to allow sensible fallbacks:
+        # colapsed container > container > leaf > item
+        if   is_container and is_collapsed and fcollapsed: item = fcollapsed(tag)
+        elif is_container and fcontainer:                  item = fcontainer(tag)
+        elif fleaf:                                        item = fleaf(tag)
+        else:                                              item = tag
+        yield tag, root, _level, _path, key, idx, is_container, is_collapsed
+        if is_container and not is_collapsed:
+            yield from deep_walk(
+                tag, key_sorted=key_sorted, collapse=collapse,
+                fcollapsed=fcollapsed, fcontainer=fcontainer, fleaf=fleaf,
+                _path=_path[key], _level=_level+1)
+
+
 # Add .pretty() method to all NBT tags
 _Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 
