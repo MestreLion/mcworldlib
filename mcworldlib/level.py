@@ -17,7 +17,7 @@ from . import nbt
 from . import player
 
 log = logging.getLogger(__name__)
-T = t.TypeVar('T', bound=nbt.Root)
+T = t.TypeVar('T', bound='Level')
 
 
 class Level(nbt.File):
@@ -46,6 +46,8 @@ class Level(nbt.File):
 
     @classmethod
     def parse(cls: t.Type[T], buff, *args, world=None, **kwargs) -> T:
+        # noinspection PyTypeChecker
+        # https://youtrack.jetbrains.com/issue/PY-47271
         self: T = super().parse(buff, *args, **kwargs)
         # Can't rely on Compound.parse() to pass args to init()
         self.world = world

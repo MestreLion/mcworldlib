@@ -63,7 +63,9 @@ ContainerTag: 't.TypeAlias' = t.Union[
     Compound,
     Array,
 ]
-T = t.TypeVar('T', bound='Root')
+TagKey: 't.TypeAlias' = t.Union[str, int]
+
+RT = t.TypeVar('RT', bound='Root')
 
 
 class Root(Compound):
@@ -108,7 +110,7 @@ class Root(Compound):
         return name, self[name]
 
     @classmethod
-    def parse(cls: t.Type[T], buff, byteorder='big') -> T:
+    def parse(cls: t.Type[RT], buff, byteorder='big') -> RT:
         # For the typing dance, see https://stackoverflow.com/a/44644576/624066
         tag_id = _read_numeric(_BYTE, buff, byteorder)
         if not tag_id == cls.tag_id:
@@ -118,7 +120,7 @@ class Root(Compound):
             raise TypeError("Non-Compound root tags is not supported:"
                             f"{cls.get_tag(tag_id).__name__}")
         name = _read_string(buff, byteorder)
-        self: T = super().parse(buff, byteorder)
+        self: RT = super().parse(buff, byteorder)
         self.root_name = name
         return self
 
@@ -159,44 +161,60 @@ class File(Root, _File):
         return super().__repr__().replace(f"<{name}", f"<{name} {self.filename!r}", 1)
 
 
-def walk(
-    root: AnyTag, sort: bool = False
-) -> t.Iterator[t.Tuple[AnyTag, Path, t.Union[str, int], int, bool, bool, int, ContainerTag]]:
+class FQTag(t.NamedTuple):
+    """Fully qualified Tag, as yielded by the walk family of functions.
+
+    See deep_walk() for the description of each member.
+    """
+    tag:          AnyTag
+    path:         Path
+    key:          TagKey
+    idx:          int
+    is_container: bool
+    is_collapsed: bool
+    level:        int
+    parent:       ContainerTag
+    root:         ContainerTag
+
+
+def walk(root: AnyTag, sort: bool = False) -> t.Iterator[FQTag]:
     """deep_walk() wrapper with different defaults
 
     Only walk into Compound, List of Compound, and Lists of List. Any other tag,
     including Arrays and Lists of other types, are considered leaf tags and not
     recurred into.
 
-    If sort, sort COmpound keys case-insensitively. If not, do not sort keys at
+    If sort, sort Compound keys case-insensitively. If not, do not sort keys at
     all, yielding tags by insertion order.
     """
     yield from deep_walk(
         root,
-        collapse=lambda tg: (not isinstance(tg, (List[List], List[Compound]))
-                             and isinstance(tg, (Array, List))),
+        collapse=lambda tag: (not isinstance(tag, (List[List], List[Compound]))
+                              and isinstance(tag, (Array, List))),
         key_sorted=str.lower if sort else None,
     )
 
 
 def deep_walk(
     root:       AnyTag,
-    key_sorted: t.Callable[[t.Tuple[str, AnyTag]], t.Any] = None,
+    key_sorted: t.Callable[[t.Tuple[str, AnyTag]], t.Any] = None,  # SupportsLessThan
     collapse:   t.Callable[[AnyTag], bool]  = None,
     _path:      Path = Path(),
     _level:     int = 0,  # == len(path)
-) -> t.Iterator[t.Tuple[AnyTag, Path, t.Union[str, int], int, bool, bool, int, ContainerTag]]:
+    _root:      ContainerTag = None,
+) -> t.Iterator[FQTag]:
     """Yield a data tuple about each child of a root container tag, recursively.
 
     Yielded tuple contains the following information:
-    - Tag: currently yielded tag
-    - Path: NBT Path location for the parent tag. See description below for details.
-    - Key: tag's location in its parent. See description below for details.
-    - Idx: tag's order in the enumeration of its parent's children. Same as Key if in List
-    - Is_collapsed: If tag is a container but not recursed into due to collapse function
-    - Is_container: If tag is a (mutable) container, i.e, Compound, List or Array
-    - Level: nesting/recursion level. 0 for root's immediate children. Same as len(Path)
-    - Parent: tag's parent. Same as Path[Key]
+     - Tag: currently yielded tag
+     - Path: NBT Path location for the parent tag. See description below for details.
+     - Key: tag's location in its parent. See description below for details.
+     - Idx: tag's order in the enumeration of its parent's children. Same as Key if in List
+     - Container: If tag is a (mutable) container, i.e, Compound, List or Array
+     - Collapsed: If container tag will not be recursed into, as set by the collapse function
+     - Level: nesting/recursion level. 0 for root's immediate children. Same as len(Path)
+     - Parent: tag's parent. Same as Path[Key]
+     - Root: the original root from the initial deep_walk() call
 
     The root tag itself is not a yielded tag, and it is only considered a container
     if it is a Compound, a List of Compounds, or a List of Lists. Any other tag,
@@ -220,7 +238,7 @@ def deep_walk(
     as its key argument, to control sorting order of Compounds' items. If None,
     sorted() will not be called.
     """
-    itertags: t.Iterable[t.Tuple[t.Union[str, int], AnyTag]]
+    itertags: t.Iterable[t.Tuple[TagKey, AnyTag]]
     if isinstance(root, Compound):  # collections.abc.Mapping
         itertags = root.items()
         if key_sorted:
@@ -235,10 +253,27 @@ def deep_walk(
         # noinspection PyUnresolvedReferences
         is_container = not tag.is_leaf
         is_collapsed = is_container and collapse and collapse(tag)
-        yield tag, _path, key, idx, is_collapsed, is_container, _level, root
+        _root = _root or root  # think about why this falsyness test is enough
+        yield FQTag(
+            tag=tag,
+            path=_path,
+            key=key,
+            idx=idx,
+            is_collapsed=is_collapsed,
+            is_container=is_container,
+            level=_level,
+            parent=root,
+            root=_root,
+        )
         if is_container and not is_collapsed:
-            yield from deep_walk(tag, key_sorted=key_sorted, collapse=collapse,
-                                 _path=_path[key], _level=_level + 1)
+            yield from deep_walk(
+                root=tag,
+                key_sorted=key_sorted,
+                collapse=collapse,
+                _path=_path[key],
+                _level=_level + 1,
+                _root=_root,
+            )
 
 
 def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
@@ -249,35 +284,35 @@ def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
     - Include item count for Compounds, Lists and Arrays
     - Arrays collapsed as leafs
     """
-    data = deep_walk(
-        root,
-        collapse=lambda tg: isinstance(tg, Array),
-        key_sorted=lambda itm: (
-            not isinstance(itm[1], Compound),
-            not isinstance(itm[1], List),
-            isinstance(itm[1], Array),
-            itm[0].lower(),
-        ),
-    )
+    # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
     previous = 0
-    # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
-    for tag, path, key, idx, collapsed, container, level, parent in data:
-        value = f"{len(tag)} entries" if container else tag
-        expanded = container and not collapsed and len(tag) > 0
-        last  = idx == len(parent) - 1
-        prefix = (("╰" if last else "├") + ("─" * width)) if level else ""
-        if level < previous:
-            margin = margin[:-(width + 1 + offset) * (previous - level)]
+    for tag in deep_walk(
+        root,
+        collapse=lambda tg: isinstance(tg, Array),
+        key_sorted=lambda item: (
+            # if "not" looks confusing, remember False comes before True when sorting
+            not isinstance(item[1], Compound),
+            not isinstance(item[1], List),
+            isinstance(item[1], Array),
+            item[0].lower(),
+        ),
+    ):
+        value = f"{len(tag.tag)} entries" if tag.is_container else tag.tag
+        is_expanded = tag.is_container and not tag.is_collapsed and len(tag.tag) > 0
+        last  = tag.idx == len(tag.parent) - 1
+        prefix = (("╰" if last else "├") + ("─" * width)) if tag.level else ""
+        if tag.level < previous:
+            margin = margin[:-(width + 1 + offset) * (previous - tag.level)]
         marker = (
-            "⊟" if expanded  else
-            "⊕" if collapsed else
-            "⊞" if container else
+            "⊟" if is_expanded  else
+            "⊕" if tag.is_collapsed else
+            "⊞" if tag.is_container else
             "─"  # leaf
         )
-        print(f"{margin}{prefix}{marker} {key:2}: {value}")
-        previous = level
-        if expanded and level:
+        print(f"{margin}{prefix}{marker} {tag.key:2}: {value}")
+        previous = tag.level
+        if is_expanded and tag.level:
             margin += ((" " if last else "│") + " " * (width + offset))
 
 

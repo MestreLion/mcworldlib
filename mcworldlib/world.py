@@ -50,26 +50,27 @@ class World:
     )
 
     # A.K.A Dimension subdirs
-    _categories = (
+    categories: t.Tuple[str, ...] = (
         'region',
         'entities',
         'poi'
     )
+    _level_file = "level.dat"
 
-    def __init__(self, path: u.AnyPath   = None, *,
-                 levelobj:   level.Level = None,
-                 dimensions: dict        = None,
-                 **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, path: u.AnyPath    = None, *,
+        levelobj:   level.Level  = None,
+        dimensions: dict         = None
+    ):
         self.path:       u.AnyPath   = path
         self.level:      level.Level = levelobj
         self.dimensions: \
-            t.Dict[u.Dimension,
-                   t.Dict[str, anvil.Regions]] = dict(dimensions or {})
+            t.Dict[u.Dimension, t.Dict[str, anvil.Regions]] = dict(dimensions or {})
 
     @property
-    def name(self):
-        return str(self.level.data_root.get('LevelName', os.path.basename(self.path)))
+    def name(self) -> str:
+        return str(getattr(self.level, 'data_root', {}
+                           ).get('LevelName', getattr(self.path, 'name', "")))
 
     @name.setter
     def name(self, value):
@@ -108,13 +109,17 @@ class World:
             for chunk in region.values():
                 yield chunk
 
-    def get_all_chunks(self, progress=True) -> (u.Dimension, str, anvil.RegionChunk):
-        """Yield a (dimension, category, chunk) tuple for all chunks in all dimensions and categories"""
+    def get_all_chunks(self, progress=True
+                       ) -> t.Iterator[t.Tuple[u.Dimension, str, anvil.RegionChunk]]:
+        """Yield (dimension, category, chunk) for all chunks
+
+         In all dimensions and categories
+         """
         dimensions = self.dimensions.keys()
         if progress:
             dimensions = tqdm.tqdm(dimensions)
         for dimension in dimensions:
-            for category in self._categories:
+            for category in self.categories:
                 for chunk in self.get_chunks(progress=progress,
                                              dimension=dimension,
                                              category=category):
@@ -160,15 +165,15 @@ class World:
         # Multiplayer
         raise NotImplementedError
 
-    def save(self):
+    def save(self, path: u.AnyPath = None):
         # TODO: Save the Regions!
         self.level.save()
 
-    def walk(self, progress=False
-             ) -> t.Tuple[os.PathLike,
-                          t.Union[level.Level, anvil.RegionFile],
-                          nbt.Root,
-                          t.Tuple[nbt.AnyTag, nbt.Path, t.Union[str, int]]]:
+    def walk(self, progress=False) -> t.Iterator[t.Tuple[os.PathLike,
+                                                         t.Union[level.Level,
+                                                                 anvil.RegionFile],
+                                                         nbt.Root,
+                                                         nbt.FQTag]]:
         """Perform nbt.walk() for every NBT Root in the entire World.
 
         Yield (File Source, Path, NBT Root, Walk Data) for every tag.
@@ -230,7 +235,7 @@ class World:
         # TODO: Read custom dimensions! /dimensions/<prefix>/<name>/region
         for dimension in u.Dimension:
             self.dimensions[dimension] = {}
-            for category in self._categories:
+            for category in self.categories:
                 self.dimensions[dimension][category] = anvil.Regions.load(self, dimension, category)
 
         # ...

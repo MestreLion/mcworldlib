@@ -38,16 +38,16 @@ import numpy
 
 # platform-dependent minecraft directory paths
 if platform.system() == 'Windows':
-    MINECRAFT_SAVES_DIR = os.path.expanduser('~/AppData/Roaming/.minecraft/saves')
+    MINECRAFT_SAVES_DIR: str = os.path.expanduser('~/AppData/Roaming/.minecraft/saves')
 else:
-    MINECRAFT_SAVES_DIR = os.path.expanduser('~/.minecraft/saves')
+    MINECRAFT_SAVES_DIR: str = os.path.expanduser('~/.minecraft/saves')
 
 CHUNK_GRID = (32, 32)  # (X, Z) chunks in each region file = 1024 chunks per region
 CHUNK_SIZE = (16, 16)  # (X, Z) blocks in each chunk
 SECTION_HEIGHT = 16    # chunk section height in blocks
 
 # General type aliases
-AnyPath = t.Union[str, bytes, os.PathLike]
+AnyPath = t.Union[str, os.PathLike]
 AnyFile = t.Union[AnyPath, t.BinaryIO]
 
 # Pos stuff...
@@ -68,11 +68,14 @@ CompoundT = t.Dict[str, VT]
 
 
 class MCError(Exception):
-    """Base exception for business-logic, expected and handled custom exceptions.
+    """Base class for custom exceptions, with errno and %-formatting for args.
 
-    All custom exceptions must be a subclass of this.
+    All modules in this package raise this (or a subclass) for all
+    explicitly raised, business-logic, expected or handled exceptions
     """
-    pass
+    def __init__(self, msg: object = "", *args, errno: int = 0):
+        super().__init__((str(msg) % args) if args else msg)
+        self.errno = errno
 
 
 class Dimension(enum.Enum):
