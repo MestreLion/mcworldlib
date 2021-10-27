@@ -78,6 +78,12 @@ class MCError(Exception):
         self.errno = errno
 
 
+class PathNotSpecified(MCError, ValueError):
+    def __init__(self, msg: object = "No path specified", *args, **kwargs):
+        super().__init__(msg, *args, **kwargs)
+
+
+
 class Dimension(enum.Enum):
     # Changed from IDs to namespace in Minecraft 1.16 (2230 < DataVersion < 2586)
     OVERWORLD  =  0

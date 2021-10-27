@@ -167,7 +167,28 @@ class World:
 
     def save(self, path: u.AnyPath = None):
         # TODO: Save the Regions!
-        self.level.save()
+
+        # World Directory
+        if path is None:
+            path = self.path
+        if path is None:
+            raise u.PathNotSpecified('No directory specified for saving World')
+        path = pathlib.Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+
+        # Level.dat
+        filename = path.joinpath(self._level_file)
+        if self.level is None:
+            self.level = level.Level()
+            self.level.world = self
+            self.level.filename = filename
+        elif self.level.filename is not None:
+            oldname = pathlib.Path(self.level.filename).name
+            if not oldname == self._level_file:
+                log.warning("Custom Level filename %r will not be preserved,"
+                            " Level will be saved with the standard filename %r",
+                            oldname, self._level_file)
+        self.level.save(path.joinpath(self._level_file))
 
     def walk(self, progress=False) -> t.Iterator[t.Tuple[os.PathLike,
                                                          t.Union[level.Level,
@@ -191,14 +212,14 @@ class World:
             return pathlib.Path(*paths).relative_to(self.path)
 
         for data in nbt.walk(self.level):
-            yield relpath(self.level.filename), self.level, self.level, tuple(data[:4])
+            yield relpath(self.level.filename), self.level, self.level, data
 
         for dimension, category, chunk in self.get_all_chunks(progress=progress):
             region = chunk.region
             pos = f"c.{chunk.pos.filepart}@{chunk.world_pos.filepart}"
             fspath = relpath(chunk.region.filename, pos)
             for data in nbt.walk(chunk):
-                yield fspath, region, chunk, tuple(data[:4])
+                yield fspath, region, chunk, data
 
     @classmethod
     def load(cls, path: u.AnyPath, **kwargs):
