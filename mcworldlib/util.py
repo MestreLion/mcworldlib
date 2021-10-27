@@ -78,10 +78,9 @@ class MCError(Exception):
         self.errno = errno
 
 
-class PathNotSpecified(MCError, ValueError):
-    def __init__(self, msg: object = "No path specified", *args, **kwargs):
-        super().__init__(msg, *args, **kwargs)
-
+class InvalidPath(MCError, ValueError):
+    def __init__(self, msg: object = "", *args, **kwargs):
+        super().__init__(f"Invalid path: {msg}", *args, **kwargs)
 
 
 class Dimension(enum.Enum):

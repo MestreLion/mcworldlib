@@ -17,7 +17,7 @@ __all__ = [
     'load',
 ]
 
-
+import io
 import logging
 import os.path
 import pathlib
@@ -37,7 +37,7 @@ THE_NETHER = u.Dimension.THE_NETHER
 THE_END    = u.Dimension.THE_END
 
 
-class WorldNotFoundError(u.MCError, IOError): pass
+class WorldNotFoundError(u.MCError, FileNotFoundError): pass
 
 
 class World:
@@ -172,7 +172,7 @@ class World:
         if path is None:
             path = self.path
         if path is None:
-            raise u.PathNotSpecified('No directory specified for saving World')
+            raise u.InvalidPath('No directory specified for saving World')
         path = pathlib.Path(path)
         path.mkdir(parents=True, exist_ok=True)
 
@@ -226,26 +226,8 @@ class World:
         self: 'World' = cls()
 
         # /level.dat and directory path
-        if hasattr(path, 'name'):
-            # Assume file-like buffer to level.dat
-            self.path  = os.path.dirname(path.name)
-            self.level = level.Level.parse(path)
-        elif os.path.isfile(path):
-            # Assume level.dat itself
-            self.path  = os.path.dirname(path)
-            self.level = level.Level.load(path, **kwargs)
-        elif os.path.isdir(path):
-            # Assume directory containing level.dat
-            self.path  = path
-            self.level = level.Level.load(os.path.join(path, 'level.dat'), **kwargs)
-        else:
-            # Last chance: try path as name of a minecraft save dir
-            path = os.path.expanduser(os.path.join(u.MINECRAFT_SAVES_DIR, path))
-            if os.path.isdir(path):
-                self.path  = path
-                self.level = level.Level.load(os.path.join(path, 'level.dat'), **kwargs)
-            else:
-                raise WorldNotFoundError(f"World not found: {path}")
+        self.path, self.level = cls._load_level_path(path, **kwargs)
+
         # Can't rely on nbtlib.File.load() to pass args to parse()
         self.level.world = self
 
@@ -265,6 +247,34 @@ class World:
 
     def _category_dict(self, category):
         return {k: v.get(category, {}) for k, v in self.dimensions.items()}
+
+    @classmethod
+    def _load_level_path(cls, path: u.AnyFile, **kwargs) -> t.Tuple[pathlib.Path,
+                                                                    level.Level]:
+        """Load possibly custom level.day and determine World path"""
+        if isinstance(path, io.FileIO) and path.name:
+            # Assume file-like buffer to level.dat
+            if not isinstance(path.name, (str, os.PathLike)):
+                raise u.InvalidPath(path)
+            return (pathlib.Path(path.name).parent,
+                    level.Level.parse(path, **kwargs))
+        if not isinstance(path, (str, os.PathLike)):
+            raise u.InvalidPath(path)
+        path = pathlib.Path(path).expanduser()
+        if path.is_file():
+            # Assume level.dat itself
+            return (path.parent,
+                    level.Level.load(path, **kwargs))
+        if path.is_dir():
+            # Assume directory containing level.dat
+            return (path,
+                    level.Level.load(path.joinpath(cls._level_file), **kwargs))
+        # Last chance: try path as name of a minecraft save dir
+        mcpath = pathlib.Path(u.MINECRAFT_SAVES_DIR, path).expanduser()
+        if mcpath.is_dir():
+            return (path,
+                    level.Level.load(mcpath.joinpath(cls._level_file), **kwargs))
+        raise WorldNotFoundError(f"World not found: {path}")
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.name!r} at {self.path!r}>'

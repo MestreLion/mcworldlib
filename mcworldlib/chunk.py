@@ -17,7 +17,7 @@ from . import nbt
 from . import entity
 from . import util as u
 
-T = t.TypeVar('T', bound=nbt.Root)
+T = t.TypeVar('T', bound='Chunk')
 
 
 # TODO: create an nbt.Schema for it
@@ -29,6 +29,7 @@ class Chunk(nbt.Root):
 
     @classmethod
     def parse(cls: t.Type[T], *args, **kwargs) -> T:
+        # noinspection PyTypeChecker
         self: T = super().parse(*args, **kwargs)
         # In Entities Lists, replace plain Compound with an Entity (subclass) instance
         for i, e in enumerate(self.entities or []):
