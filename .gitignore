@@ -1,5 +1,5 @@
 # Local tests
-/test*.py
+data/tests/
 
 # PyCharm IDE
 .idea/

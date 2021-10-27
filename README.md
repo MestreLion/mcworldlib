@@ -228,6 +228,7 @@ How about some **diamonds**?
 Get 64 *blocks* of it in each one of your free inventory slots!
 
 ```pycon
+>>> backup = mc.List[mc.Compound](inventory[:])  # soon just inventory.copy()
 >>> free_slots = set(range(36)) - set(item['Slot'] for item in inventory)
 >>> for slot in free_slots:
 ...     print(f"Adding 64 blocks of Diamond to inventory slot {slot}")
@@ -246,7 +247,11 @@ Adding 64 blocks of Diamond to inventory slot 14
 ...
 Adding 64 blocks of Diamond to inventory slot 35
 
->>> world.save()  # Go on, we both know you want it. I won't judge you.
+>>> # Go on, we both know you want it. I won't judge you.
+>>> world.save('data/tests/diamonds')
+
+>>> # Revert it so it doesn't mess with other examples
+>>> world.player.inventory = backup
 
 ```
 Have fun, you millionaire!
