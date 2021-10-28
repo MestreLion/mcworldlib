@@ -25,10 +25,13 @@ from .nbt    import *
 from .world  import *
 from .util   import *
 
-__project__ = "MCWorldLib"
-__author__  = "Rodrigo Silva (MestreLion)"
-__email__   = "minecraft@rodrigosilva.com"
-__version__ = '0.2019.12'
+# TODO: Change setup.cfg so it reads here instead of duplicating values!
+__title__       = "mcworldlib"
+__project__     = "MCWorldLib: Minecraft World Library"  # unused in setup.cfg
+__description__ = "Yet another python library to manipulate Minecraft save data"  # __doc__
+__author__      = "Rodrigo Silva (MestreLion)"
+__email__       = "minecraft@rodrigosilva.com"
+__version__     = '0.2021.09'
 
 # Renaming stuff for the API
 walk_nbt = walk  # from .nbt
