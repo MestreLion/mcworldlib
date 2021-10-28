@@ -272,7 +272,7 @@ class World:
         # Last chance: try path as name of a minecraft save dir
         mcpath = pathlib.Path(u.MINECRAFT_SAVES_DIR, path).expanduser()
         if mcpath.is_dir():
-            return (path,
+            return (mcpath,
                     level.Level.load(mcpath.joinpath(cls._level_file), **kwargs))
         raise WorldNotFoundError(f"World not found: {path}")
 
