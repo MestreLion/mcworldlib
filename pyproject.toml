@@ -1,0 +1,14 @@
+# To perform editable (development) install:
+# pip3 install --user --no-build-isolation -e .
+# setup.py is not needed in this scenario
+# There might have better alternatives. Try combinations of:
+# python3 -m build, remove pyproject.toml (this file), add setup.py shim,
+#   pip --no-use-pep517, comment-out build-backend here, ...
+# ... or just give up and use poetry.
+
+[build-system]
+requires = [
+	"setuptools>=42.0.0",  # Support license_files
+	"wheel"
+]
+build-backend = "setuptools.build_meta"
