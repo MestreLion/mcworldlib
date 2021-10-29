@@ -35,7 +35,7 @@ from nbtlib.tag import *
 # noinspection PyProtectedMember, PyUnresolvedReferences
 from nbtlib.tag import Array  # Not in __all__, but used by others
 # noinspection PyUnresolvedReferences
-from nbtlib.nbt import File as _File, load as load_dat  # could be File.load
+from nbtlib.nbt import File as _File  # intentionally not importing load
 # noinspection PyUnresolvedReferences
 from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
@@ -331,7 +331,8 @@ String.__str__ = lambda self: str.__str__(self)
 delattr(_File, 'root')
 delattr(_File, 'root_name')
 
-# Convenience shortcut
+# Convenience shortcuts
 load_mcc = File.load_mcc
+load_dat = File.load
 
 del t
