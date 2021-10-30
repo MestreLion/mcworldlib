@@ -136,14 +136,29 @@ def print_tree(root: Container, width: int = 2, offset: int = 0,
             margin += ((" " if last else "│") + " " * (width + offset))
 
 
+def print_walk(root):
+    """Simple visualizer for data yielded from walk"""
+    print("\n".join("\t" * _.level +
+                    ".".join(map(str, _.keys)) +
+                    ": " + (f"{len(_.element)} elements"
+                            if _.container else repr(_.element))
+                    for _ in walk(root)))
+
+
 def main():
     import json
     import mcworldlib as mc
-    print_tree(json.load(open("../data/New World/advancements/"
-                              "8b4accb8-d952-4050-97f2-e00c4423ba92.json")))
-    print_tree(mc.load_dat("../data/New World/level.dat"))
-    print_tree([{((1, 2), "c", ((4, 5, 6), 7, "d"))}])
-    print_tree("rodrigo")
+    for data in (
+        json.load(open("../data/New World/advancements/"
+                       "8b4accb8-d952-4050-97f2-e00c4423ba92.json")),
+        mc.load_dat("../data/New World/level.dat"),
+        [{"x": 1, "y": 2}, "a", ((4, {"z": 5}, "b"), 6, "c")],
+        "rodrigo",
+    ):
+        print("=" * 70)
+        print_walk(data)
+        print("-" * 70)
+        print_tree(data)
 
 
 if __name__ == '__main__':
