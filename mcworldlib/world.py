@@ -13,6 +13,8 @@ __all__ = [
     'OVERWORLD',
     'THE_NETHER',
     'THE_END',
+    'WorldNotFoundError',
+    'FQWorldTag',
     'World',
     'load',
 ]
@@ -39,6 +41,14 @@ THE_END    = u.Dimension.THE_END
 
 class WorldNotFoundError(u.MCError, FileNotFoundError): pass
 
+
+class FQWorldTag(t.NamedTuple):
+    """Data returned by World.walk()"""
+    path: os.PathLike           # Relative filename. Real for level, fake for chunks
+    obj:  t.Union[anvil.RegionFile,
+                  level.Level]  # Object "owning" path , i.e., the one you .save()
+    root:  nbt.Root             # Root tag for fqtag
+    fqtag: nbt.FQTag            # Fully qualified tag, i.e, data returned by nbt.walk()
 
 class World:
     """Save directory and all related files and objects"""
@@ -190,19 +200,15 @@ class World:
                             oldname, self._level_file)
         self.level.save(path.joinpath(self._level_file))
 
-    def walk(self, progress=False) -> t.Iterator[t.Tuple[os.PathLike,
-                                                         t.Union[level.Level,
-                                                                 anvil.RegionFile],
-                                                         nbt.Root,
-                                                         nbt.FQTag]]:
+    def walk(self, progress=False) -> t.Iterator[FQWorldTag]:
         """Perform nbt.walk() for every NBT Root in the entire World.
 
-        Yield (File Source, Path, NBT Root, Walk Data) for every tag.
+        Yield (Relative Path, File owner Object, NBT Root, FQTag Data) for every tag.
 
         Path might not be a real path, but derived from Source and NBT Root.
         The real path can (usually) be obtained from Source.filename.
 
-        NBT Root will be the same object as Source if it's a file like level.dat,
+        NBT Root will be the same owner Object if it's a file like level.dat,
         or distinct such as chunks and their regions. A region is a file but not
         an NBT tag, and a chunk is an NBT Root but not a file of its own.
 
@@ -212,14 +218,24 @@ class World:
             return pathlib.Path(*paths).relative_to(self.path)
 
         for data in nbt.walk(self.level):
-            yield relpath(self.level.filename), self.level, self.level, data
+            yield FQWorldTag(
+                path  = relpath(self.level.filename),
+                obj   = self.level,
+                root  = self.level,
+                fqtag = data,
+            )
 
         for dimension, category, chunk in self.get_all_chunks(progress=progress):
             region = chunk.region
             pos = f"c.{chunk.pos.filepart}@{chunk.world_pos.filepart}"
             fspath = relpath(chunk.region.filename, pos)
             for data in nbt.walk(chunk):
-                yield fspath, region, chunk, data
+                yield FQWorldTag(
+                    path  = fspath,
+                    obj   = region,
+                    root  = chunk,
+                    fqtag = data,
+                )
 
     @classmethod
     def load(cls, path: u.AnyPath, **kwargs):
