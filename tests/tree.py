@@ -69,7 +69,6 @@ class Item(NamedTuple):
     idx:       int
     container: bool
     pruned:    bool
-    level:     int  # == len(keys)
     parent:    Container
     root:      Container
 
@@ -99,7 +98,6 @@ def walk(
             idx=idx,
             container=container,
             pruned=pruned,
-            level=len(keys),
             parent=element,
             root=_root,
         )
@@ -112,7 +110,7 @@ def walk(
             )
 
 
-def print_tree(root: Container, width: int = 2, offset: int = 0,
+def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
                iterator: Iterator[Item] = None) -> None:
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
@@ -120,12 +118,13 @@ def print_tree(root: Container, width: int = 2, offset: int = 0,
     if iterator is None:
         iterator = walk(root)
     for item in iterator:
+        level = len(item.keys)
         value = f"{len(item.element)} elements" if item.container else item.element
         expanded = item.container and not item.pruned and len(item.element) > 0
         last  = item.idx == len(item.parent) - 1
-        prefix = (("╰" if last else "├") + ("─" * width)) if item.level else ""
-        if item.level < previous:
-            margin = margin[:-(width + 1 + offset) * (previous - item.level)]
+        prefix = (("╰" if last else "├") + ("─" * width)) if level > 0 else ""
+        if level < previous:
+            margin = margin[:-(width + 1 + line_offset) * (previous - level)]
         marker = (
             "⊟" if expanded  else
             "⊕" if item.pruned else
@@ -133,14 +132,14 @@ def print_tree(root: Container, width: int = 2, offset: int = 0,
             "─"  # leaf
         )
         print(f"{margin}{prefix}{marker} {item.keys[-1]:2}: {value}")
-        previous = item.level
-        if expanded and item.level:
-            margin += ((" " if last else "│") + " " * (width + offset))
+        previous = level
+        if expanded and level > 0:
+            margin += ((" " if last else "│") + " " * (width + line_offset))
 
 
 def print_walk(root):
     """Simple visualizer for data yielded from walk"""
-    print("\n".join("\t" * _.level +
+    print("\n".join("\t" * (len(_.keys) - 1) +
                     ".".join(map(str, _.keys)) +
                     ": " + (f"{len(_.element)} elements"
                             if _.container else repr(_.element))
