@@ -211,7 +211,7 @@ def deep_walk(
      - Key: tag's location in its parent. See description below for details.
      - Idx: tag's order in the enumeration of its parent's children. Same as Key if in List
      - Container: If tag is a (mutable) container, i.e, Compound, List or Array
-     - Collapsed: If container tag will not be recursed into, as set by the collapse function
+     - Collapsed: If container tag will not be recurred into, as set by the collapse function
      - Level: nesting/recursion level. 0 for root's immediate children. Same as len(Path)
      - Parent: tag's parent. Same as Path[Key]
      - Root: the original root from the initial deep_walk() call
@@ -253,7 +253,7 @@ def deep_walk(
         # noinspection PyUnresolvedReferences
         is_container = not tag.is_leaf
         is_collapsed = is_container and collapse and collapse(tag)
-        _root = _root or root  # think about why this falsyness test is enough
+        _root = _root or root  # think about why this falseness test is enough
         yield FQTag(
             tag=tag,
             path=_path,
@@ -282,7 +282,7 @@ def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
     - Compounds first, then Lists (of all types), then leaf values. Arrays last
     - Case insensitive sorting on key names
     - Include item count for Compounds, Lists and Arrays
-    - Arrays collapsed as leafs
+    - Arrays collapsed as leaves
     """
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
@@ -322,7 +322,7 @@ _Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 _Base.is_leaf = property(
     fget=lambda _: not isinstance(_, (Compound, List, Array)),
     doc="If this tag an immutable tag and not a Mutable Collection."
-        " Non-leafs are the containers excluding String: Compound, List, Array")
+        " Non-leaves are the containers excluding String: Compound, List, Array")
 
 # Fix String.__str__. Not needed in modern nbtlib versions
 String.__str__ = lambda self: str.__str__(self)
