@@ -23,7 +23,7 @@ via []. Sequences and Mappings are, Sequences having their integer index as key.
 Sets can be cast to Sequence to satisfy this.
 """
 
-from collections.abc import Collection, Mapping, ByteString
+from collections.abc import Collection, Sequence, Mapping, ByteString
 from typing import Callable, Tuple, Any, Iterator, Hashable, Union, NamedTuple, Iterable
 import typing as t  # for Collection, Sequence and TypeAlias (Python 3.8+)
 
@@ -53,23 +53,23 @@ def _is_container(v: Element) -> bool:
     return isinstance(v, Collection) and not isinstance(v, (str, ByteString))
 
 
-def get_element(root: Container, parts: t.Sequence[Key]) -> Element:
+def get_element(root: Container, keys: t.Sequence[Key]) -> Element:
     """Retrieve an element from a deeply nested root container"""
-    if not parts:
+    if not keys:
         return root
-    if not isinstance(root, Collection):
+    if not isinstance(root, (Sequence, Mapping)):  # Actually supports __getitem__
         root = tuple(root)
-    return get_element(root[parts[0]], parts[1:])  # noqa
+    # Hashable as Key type is too broad for Sequence, so checkers may complain
+    return get_element(root[keys[0]], keys[1:])  # noqa
 
 
 class Item(NamedTuple):
     element:   Element
-    parts:     Tuple
-    key:       Key
+    keys:      t.Sequence[Key]
     idx:       int
     container: bool
     pruned:    bool
-    level:     int  # == len(parts)
+    level:     int  # == len(keys)
     parent:    Container
     root:      Container
 
@@ -79,18 +79,18 @@ def walk(
     to_prune:       Callable[[Element], bool]  = None,
     iter_container: Callable[[Container], Iterable[Tuple[Key, Element]]] = _iter_container,
     is_container:   Callable[[Element], bool] = _is_container,
-    _parts:         Tuple = (),
-    _level:         int = 0,  # == len(_parts)
+    _keys:          Tuple = (),
+    _level:         int = 0,  # == len(_keys)
     _root:          Container = None,
 ) -> Iterator[Item]:
     for idx, (key, element) in enumerate(iter_container(root)):
         container = is_container(element)
         pruned = container and to_prune is not None and to_prune(element)
         _root = root if _root is None else _root
+        _keys = _keys + (key,)  # == (*_keys, key)
         yield Item(
             element=element,
-            parts=_parts,
-            key=key,
+            keys=_keys,
             idx=idx,
             container=container,
             pruned=pruned,
@@ -102,7 +102,7 @@ def walk(
             yield from walk(
                 root=element,
                 to_prune=to_prune,
-                _parts=_parts + (key,),  # == (*_parts, key)
+                _keys=_keys,
                 _level=_level + 1,
                 _root=_root,
             )
@@ -125,14 +125,15 @@ def print_tree(root: Container, width: int = 2, offset: int = 0) -> None:
             "⊞" if item.container else
             "─"  # leaf
         )
-        print(f"{margin}{prefix}{marker} {item.key:2}: {value}")
+        print(f"{margin}{prefix}{marker} {item.keys[-1]:2}: {value}")
         previous = item.level
         if expanded and item.level:
             margin += ((" " if last else "│") + " " * (width + offset))
 
 
 def main():
-    import json, mcworldlib as mc
+    import json
+    import mcworldlib as mc
     print_tree(json.load(open("../data/New World/advancements/"
                               "8b4accb8-d952-4050-97f2-e00c4423ba92.json")))
     print_tree(mc.load_dat("../data/New World/level.dat"))
