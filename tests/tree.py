@@ -24,7 +24,9 @@ Sets can be cast to Sequence to satisfy this.
 """
 
 from collections.abc import Collection, Sequence, Mapping, ByteString
-from typing import Callable, Tuple, Any, Iterator, Hashable, Union, NamedTuple, Iterable
+from typing import (
+    Callable, Tuple, Any, Iterator, Hashable, Union, NamedTuple, Iterable, Optional
+)
 import typing as t  # for Collection, Sequence and TypeAlias (Python 3.8+)
 
 # This non-sensical typing is just to illustrate the concepts
@@ -113,7 +115,10 @@ def walk(
 def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
                show_root_as: Any = None, indent_first_gen: bool = True,
                noun_plural: str = "items", noun_singular: str = "item",
-               iterator: Iterator[Item] = None) -> None:
+               fmt_leaf: str = "{item.element}",
+               fmt_container: str = "{length} {noun}",
+               do_print: bool = True,
+               iterator: Iterator[Item] = None) -> Optional[str]:
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
     previous = 0
@@ -121,32 +126,40 @@ def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
         print(show_root_as)
     if iterator is None:
         iterator = walk(root)
+    lines = []
     for item in iterator:
         level = len(item.keys)
         if not indent_first_gen:
             level -= 1
-        if item.container:
-            qty = len(item.element)
-            noun = noun_singular if noun_singular and qty == 1 else noun_plural
-            value = f"{qty} {noun}"
-            expanded = not item.pruned and qty > 0
-        else:
-            value = item.element
-            expanded = False
         last  = item.idx == len(item.parent) - 1
         prefix = (("╰" if last else "├") + ("─" * width)) if level > 0 else ""
         if level < previous:
             margin = margin[:-(width + 1 + line_offset) * (previous - level)]
+        if item.container:
+            length = len(item.element)
+            expanded = not item.pruned and length > 0
+            noun = noun_singular if length == 1 else noun_plural
+        else:
+            length = 0
+            expanded = False
+            noun = noun_singular
         marker = (
             "⊟" if expanded  else
             "⊕" if item.pruned else
             "⊞" if item.container else
             "─"  # leaf
         )
-        print(f"{margin}{prefix}{marker} {item.keys[-1]:2}: {value}")
+        value = (fmt_container if item.container else fmt_leaf).format(**locals())
+        line = f"{margin}{prefix}{marker} {item.keys[-1]:2}: {value}"
+        if do_print:
+            print(line)
+        else:
+            lines.append(line)
         previous = level
         if expanded and level > 0:
             margin += ((" " if last else "│") + " " * (width + line_offset))
+    if do_print:
+        return "\n".join(lines)
 
 
 def print_walk(root):
