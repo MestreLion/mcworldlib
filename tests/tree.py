@@ -83,6 +83,8 @@ def walk(
     _level:         int = 0,  # == len(_keys)
     _root:          Container = None,
 ) -> Iterator[Item]:
+    if _root is None and not is_container(root):
+        return
     for idx, (key, element) in enumerate(iter_container(root)):
         container = is_container(element)
         pruned = container and to_prune is not None and to_prune(element)
