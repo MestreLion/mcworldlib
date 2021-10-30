@@ -111,16 +111,28 @@ def walk(
 
 
 def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
+               show_root_as: Any = None, indent_first_gen: bool = True,
+               noun_plural: str = "items", noun_singular: str = "item",
                iterator: Iterator[Item] = None) -> None:
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
     previous = 0
+    if show_root_as is not None:
+        print(show_root_as)
     if iterator is None:
         iterator = walk(root)
     for item in iterator:
         level = len(item.keys)
-        value = f"{len(item.element)} elements" if item.container else item.element
-        expanded = item.container and not item.pruned and len(item.element) > 0
+        if not indent_first_gen:
+            level -= 1
+        if item.container:
+            qty = len(item.element)
+            noun = noun_singular if noun_singular and qty == 1 else noun_plural
+            value = f"{qty} {noun}"
+            expanded = not item.pruned and qty > 0
+        else:
+            value = item.element
+            expanded = False
         last  = item.idx == len(item.parent) - 1
         prefix = (("╰" if last else "├") + ("─" * width)) if level > 0 else ""
         if level < previous:
@@ -159,7 +171,7 @@ def main():
         print("=" * 70)
         print_walk(data)
         print("-" * 70)
-        print_tree(data)
+        print_tree(data, show_root_as=data.__class__.__name__)
 
 
 if __name__ == '__main__':
