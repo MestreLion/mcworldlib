@@ -1,5 +1,5 @@
-- Other NBT .dat files: World.data, for the "data/" dir, advancements, playerdata
-- JSON data
+- Other NBT .dat files: World.data, for the "data/" dir, playerdata
+- World JSON data: stats, advancements
 - Easy, path-like way to locate and print an NBT data in World
 	- see walk_nbt() and extend it to all World filesystem
 	- @property subpath, relative to parent, for all classes:
@@ -11,6 +11,9 @@
 - Custom Dimensions
 	- Convert Dimension to a full-fledged class
 	- Overworld, Nether and The End are singleton instances
+- Deal directly with Chunks in World, making Regions an implementation detail of Chunk
+	- World should care only about (cx, cz) chunks in a category/dimension
+	- Chunk.{save,load}(), internally invoking its region
 - Decouple Anvil/Regions and NBT parsing Library
 	- AnvilRegion.load() store compressed NBT and return NBT decompressing on-the-fly,
 	  fully agnostic about NBT content
@@ -22,7 +25,6 @@
 		- serializing must be *MUCH* faster than write(), otherwise just compare binary NBT
 		- hashes: md5, python's hash()
 		- serializations: JSON, Pickle, walk, str/repr(sorted(dict.items())), msgpack
-
 - Fully support MCC files
 - *Pos*() constructor should accept a single iterable in constructor, like tuple()
 	- Currently Pos(1, 2) is OK, Pos(pos) is not, and vice-versa for tuple()
