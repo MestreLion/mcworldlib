@@ -110,11 +110,14 @@ def walk(
             )
 
 
-def print_tree(root: Container, width: int = 2, offset: int = 0) -> None:
+def print_tree(root: Container, width: int = 2, offset: int = 0,
+               iterator: Iterator[Item] = None) -> None:
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
     previous = 0
-    for item in walk(root):
+    if iterator is None:
+        iterator = walk(root)
+    for item in iterator:
         value = f"{len(item.element)} elements" if item.container else item.element
         expanded = item.container and not item.pruned and len(item.element) > 0
         last  = item.idx == len(item.parent) - 1
