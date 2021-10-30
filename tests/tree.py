@@ -75,37 +75,39 @@ class Item(NamedTuple):
 
 
 def walk(
-    root:           Container,
+    element:        Container,
     to_prune:       Callable[[Element], bool]  = None,
     iter_container: Callable[[Container], Iterable[Tuple[Key, Element]]] = _iter_container,
     is_container:   Callable[[Element], bool] = _is_container,
     _keys:          Tuple = (),
-    _level:         int = 0,  # == len(_keys)
     _root:          Container = None,
 ) -> Iterator[Item]:
-    if _root is None and not is_container(root):
-        return
-    for idx, (key, element) in enumerate(iter_container(root)):
-        container = is_container(element)
-        pruned = container and to_prune is not None and to_prune(element)
-        _root = root if _root is None else _root
-        _keys = _keys + (key,)  # == (*_keys, key)
+    if _root is None:
+        # Root area
+        _root = element
+        ...  # reserved for the future. yield root perhaps?
+        # Do not iterate non-containers
+        if not is_container(element):
+            return
+    for idx, (key, child) in enumerate(iter_container(element)):
+        container = is_container(child)
+        pruned = container and to_prune is not None and to_prune(child)
+        keys = _keys + (key,)  # == (*_keys, key)
         yield Item(
-            element=element,
-            keys=_keys,
+            element=child,
+            keys=keys,
             idx=idx,
             container=container,
             pruned=pruned,
-            level=_level,
-            parent=root,
+            level=len(keys),
+            parent=element,
             root=_root,
         )
         if container and not pruned:
             yield from walk(
-                root=element,
+                element=child,
                 to_prune=to_prune,
-                _keys=_keys,
-                _level=_level + 1,
+                _keys=keys,
                 _root=_root,
             )
 
