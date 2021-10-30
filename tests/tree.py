@@ -37,8 +37,8 @@ Key:        't.TypeAlias' = Hashable  # For Sequences, always an int index
 Container:  't.TypeAlias' = t.Collection[Element]
 
 
-def _iter_container(container: Container) -> Iterable[Tuple[Key, Element]]:
-    """Default (key, element) iterable for generic containers.
+def basic_iter(container: Container) -> Iterable[Tuple[Key, Element]]:
+    """General use (key, element) iterable for containers.
 
     Handles Mappings via .items(), otherwise use enumerate().
     """
@@ -47,8 +47,8 @@ def _iter_container(container: Container) -> Iterable[Tuple[Key, Element]]:
     return enumerate(container)
 
 
-def _is_container(v: Element) -> bool:
-    """Default container test for generic containers.
+def basic_container(v: Element) -> bool:
+    """General use container test.
 
     True for any Collection that is not a String (str/bytes).
     """
@@ -78,8 +78,8 @@ class Item(NamedTuple):
 def walk(
     element:        Container,
     to_prune:       Callable[[Element], bool]  = None,
-    iter_container: Callable[[Container], Iterable[Tuple[Key, Element]]] = _iter_container,
-    is_container:   Callable[[Element], bool] = _is_container,
+    iter_container: Callable[[Container], Iterable[Tuple[Key, Element]]] = basic_iter,
+    is_container:   Callable[[Element], bool] = basic_container,
     _keys:          Tuple = (),
     _root:          Container = None,
 ) -> Iterator[Item]:
@@ -115,8 +115,8 @@ def walk(
 def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
                show_root_as: Any = None, indent_first_gen: bool = True,
                noun_plural: str = "items", noun_singular: str = "item",
-               fmt_leaf: str = "{item.element}",
                fmt_container: str = "{length} {noun}",
+               fmt_leaf: str = "{item.element}",
                do_print: bool = True,
                iterator: Iterator[Item] = None) -> Optional[str]:
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
@@ -131,7 +131,9 @@ def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
         level = len(item.keys)
         if not indent_first_gen:
             level -= 1
-        last  = item.idx == len(item.parent) - 1
+        siblings = len(item.parent)
+        idx_width = len(str(siblings - 1))
+        last  = item.idx == siblings - 1
         prefix = (("╰" if last else "├") + ("─" * width)) if level > 0 else ""
         if level < previous:
             margin = margin[:-(width + 1 + line_offset) * (previous - level)]
@@ -150,7 +152,7 @@ def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
             "─"  # leaf
         )
         value = (fmt_container if item.container else fmt_leaf).format(**locals())
-        line = f"{margin}{prefix}{marker} {item.keys[-1]:2}: {value}"
+        line = f"{margin}{prefix}{marker} {item.keys[-1]:{idx_width}}: {value}"
         if do_print:
             print(line)
         else:
