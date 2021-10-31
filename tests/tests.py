@@ -238,4 +238,9 @@ def lost_maps():
     pass
 
 
-readme()
+def tree_tests():
+    import mcworldlib.tree
+    mcworldlib.tree.tests()
+
+
+tree_tests()

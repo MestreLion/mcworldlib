@@ -29,6 +29,8 @@ from typing import (
 )
 import typing as t  # for Collection, Sequence and TypeAlias (Python 3.8+)
 
+from . import nbt
+
 
 # This non-sensical typing is just to illustrate the concepts
 # The inability to have leaf elements is the main reason `str` is not a Container
@@ -179,52 +181,48 @@ def print_walk(root):
 # ----------------------------------
 # Specialized walkers
 
-def nbt_explorer(data):
-    Compound = Mapping
-    List = Sequence
-    # Array = ByteString
-    ContainerTag = Collection  # Union[Compound, List, Array]
-    AnyTag = Any
-    TagKey = Union[str, int]
+def iter_nbt(sort_key: t.Callable[[t.Tuple[str, nbt.AnyTag]], t.Any] = None):
+    def _iter_nbt(tag: Collection) -> Iterable[Tuple[nbt.TagKey, nbt.AnyTag]]:
+        if isinstance(tag, nbt.Compound):
+            itertags = tag.items()
+            if sort_key is None:
+                return itertags
+            return sorted(itertags, key=sort_key)
+        return enumerate(tag)
+    return _iter_nbt
+    # Wow, 4 de-indenting returns in a row!!! Have you ever seen that?
 
-    def sort(item: Tuple[str, AnyTag]) -> Tuple:
+
+def nbt_explorer(data, root_name: str = None):
+    def sort(item: Tuple[str, nbt.AnyTag]) -> Tuple:
         return (
             # if "not" looks confusing, remember False comes before True when sorting
-            not isinstance(item[1], Compound),
-            not isinstance(item[1], List),
-            not item[1].is_leaf,  # originally: isinstance(item[1], Array),
+            not isinstance(item[1], nbt.Compound),
+            not isinstance(item[1], nbt.List),
+            isinstance(item[1], nbt.Array),
             item[0].lower(),
         )
-
-    def iter_container(tag: ContainerTag) -> Iterable[Tuple[TagKey, AnyTag]]:
-        if isinstance(tag, Compound):
-            return sorted(tag.items(), key=sort)
-        return enumerate(tag)
-
-    def is_container(tag: AnyTag) -> bool: return not tag.is_leaf
-    # originally: isinstance(tg, Array),
-    def to_prune(tag): return not (tag.is_leaf or isinstance(tag, (Compound, List)))
     iterator = walk(
         data,
-        to_prune=to_prune,
-        is_container=is_container,
-        iter_container=iter_container,
+        to_prune=lambda _: isinstance(_, nbt.Array),
+        is_container=lambda _: not _.is_leaf,
+        iter_container=iter_nbt(sort),
     )
     print_tree(
         (),
         iterator=iterator,
         noun_plural="entries", noun_singular="entry",
         fmt_container="{length} {noun}",
+        show_root_as=root_name,
     )
 
 
-def main():
+def tests():
     import json
-    import mcworldlib as mc
     for data in (
         json.load(open("../data/New World/advancements/"
                        "8b4accb8-d952-4050-97f2-e00c4423ba92.json")),
-        mc.load_dat("../data/New World/level.dat"),
+        nbt.load_dat("../data/New World/level.dat"),
         [{"x": 1, "y": 2}, "a", ((4, {"z": 5}, "b"), 6, "c")],
         "rodrigo",
     ):
@@ -232,10 +230,6 @@ def main():
         print_walk(data)
         print("-" * 70)
         print_tree(data, show_root_as=data.__class__.__name__)
-        if isinstance(data, mc.File):
+        if isinstance(data, nbt.File):
             print("*" * 70)
-            nbt_explorer(data)
-
-
-if __name__ == '__main__':
-    main()
+            nbt_explorer(data, root_name="level.dat")
