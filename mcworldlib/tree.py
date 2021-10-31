@@ -171,7 +171,7 @@ def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
         previous = level
         if expanded and level > 0:
             margin += ((" " if last else "│") + " " * (width + line_offset))
-    if do_print:
+    if not do_print:
         return "\n".join(lines)
 
 
