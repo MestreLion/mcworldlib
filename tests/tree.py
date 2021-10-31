@@ -29,6 +29,7 @@ from typing import (
 )
 import typing as t  # for Collection, Sequence and TypeAlias (Python 3.8+)
 
+
 # This non-sensical typing is just to illustrate the concepts
 # The inability to have leaf elements is the main reason `str` is not a Container
 Leaf:       't.TypeAlias' = Any  # Non-container, scalar, single value, etc
@@ -107,6 +108,8 @@ def walk(
             yield from walk(
                 element=child,
                 to_prune=to_prune,
+                iter_container=iter_container,
+                is_container=is_container,
                 _keys=keys,
                 _root=_root,
             )
@@ -173,6 +176,48 @@ def print_walk(root):
                     for _ in walk(root)))
 
 
+# ----------------------------------
+# Specialized walkers
+
+def nbt_explorer(data):
+    Compound = Mapping
+    List = Sequence
+    # Array = ByteString
+    ContainerTag = Collection  # Union[Compound, List, Array]
+    AnyTag = Any
+    TagKey = Union[str, int]
+
+    def sort(item: Tuple[str, AnyTag]) -> Tuple:
+        return (
+            # if "not" looks confusing, remember False comes before True when sorting
+            not isinstance(item[1], Compound),
+            not isinstance(item[1], List),
+            not item[1].is_leaf,  # originally: isinstance(item[1], Array),
+            item[0].lower(),
+        )
+
+    def iter_container(tag: ContainerTag) -> Iterable[Tuple[TagKey, AnyTag]]:
+        if isinstance(tag, Compound):
+            return sorted(tag.items(), key=sort)
+        return enumerate(tag)
+
+    def is_container(tag: AnyTag) -> bool: return not tag.is_leaf
+    # originally: isinstance(tg, Array),
+    def to_prune(tag): return not (tag.is_leaf or isinstance(tag, (Compound, List)))
+    iterator = walk(
+        data,
+        to_prune=to_prune,
+        is_container=is_container,
+        iter_container=iter_container,
+    )
+    print_tree(
+        (),
+        iterator=iterator,
+        noun_plural="entries", noun_singular="entry",
+        fmt_container="{length} {noun}",
+    )
+
+
 def main():
     import json
     import mcworldlib as mc
@@ -187,6 +232,9 @@ def main():
         print_walk(data)
         print("-" * 70)
         print_tree(data, show_root_as=data.__class__.__name__)
+        if isinstance(data, mc.File):
+            print("*" * 70)
+            nbt_explorer(data)
 
 
 if __name__ == '__main__':
