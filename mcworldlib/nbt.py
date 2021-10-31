@@ -302,6 +302,10 @@ _Base.is_leaf = property(
 # Fix String.__str__. Not needed in modern nbtlib versions
 String.__str__ = lambda self: str.__str__(self)
 
+# Ensure the trailing End Tag gets written.
+# See https://github.com/vberlier/nbtlib/issues/153
+del _File.end_tag
+
 # Just in case, as now we have a very different meaning for .root_name
 delattr(_File, 'root')
 delattr(_File, 'root_name')
