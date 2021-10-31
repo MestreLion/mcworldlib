@@ -181,8 +181,8 @@ def print_walk(root):
 # ----------------------------------
 # Specialized walkers
 
-def iter_nbt(sort_key: t.Callable[[t.Tuple[str, nbt.AnyTag]], t.Any] = None):
-    def _iter_nbt(tag: Collection) -> Iterable[Tuple[nbt.TagKey, nbt.AnyTag]]:
+def iter_nbt(sort_key: t.Callable[[t.Tuple[str, 'nbt.AnyTag']], t.Any] = None):
+    def _iter_nbt(tag: Collection) -> Iterable[Tuple['nbt.TagKey', 'nbt.AnyTag']]:
         if isinstance(tag, nbt.Compound):
             itertags = tag.items()
             if sort_key is None:
@@ -191,6 +191,11 @@ def iter_nbt(sort_key: t.Callable[[t.Tuple[str, nbt.AnyTag]], t.Any] = None):
         return enumerate(tag)
     return _iter_nbt
     # Wow, 4 de-indenting returns in a row!!! Have you ever seen that?
+
+
+def is_nbt_container(tag: 'nbt.AnyTag') -> bool:
+    # noinspection PyUnresolvedReferences
+    return not tag.is_leaf
 
 
 def nbt_explorer(data, root_name: str = None):

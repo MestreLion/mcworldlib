@@ -40,6 +40,7 @@ from nbtlib.nbt import File as _File  # intentionally not importing load
 from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
+from . import tree as _tree
 
 _log = _logging.getLogger(__name__)
 
@@ -116,7 +117,7 @@ class Root(Compound):
         if not tag_id == cls.tag_id:
             # Possible issues with a non-Compound root:
             # - root_name might not be in __slots__(), and thus not assignable
-            # - not returning a superclass might be surprising and have side-effects
+            # - not returning a superclass might be surprising and have side effects
             raise TypeError("Non-Compound root tags is not supported:"
                             f"{cls.get_tag(tag_id).__name__}")
         name = _read_string(buff, byteorder)
@@ -184,7 +185,7 @@ def walk(root: AnyTag, sort: bool = False) -> t.Iterator[FQTag]:
     including Arrays and Lists of other types, are considered leaf tags and not
     recurred into.
 
-    If sort, sort Compound keys case-insensitively. If not, do not sort keys at
+    If :sort:, sort Compound keys case-insensitively. If not, do not sort keys at
     all, yielding tags by insertion order.
     """
     yield from deep_walk(
@@ -238,42 +239,23 @@ def deep_walk(
     as its key argument, to control sorting order of Compounds' items. If None,
     sorted() will not be called.
     """
-    itertags: t.Iterable[t.Tuple[TagKey, AnyTag]]
-    if isinstance(root, Compound):  # collections.abc.Mapping
-        itertags = root.items()
-        if key_sorted:
-            itertags = sorted(itertags, key=key_sorted)
-    elif isinstance(root, (List, Array)):  # collections.abc.MutableSequence
-        itertags = enumerate(root)  # always sorted
-    else:
-        return
-
-    for idx, (key, tag) in enumerate(itertags):
-        # Determine if tag will not be walked into even if it's a container
-        # noinspection PyUnresolvedReferences
-        is_container = not tag.is_leaf
-        is_collapsed = is_container and collapse and collapse(tag)
-        _root = _root or root  # think about why this falseness test is enough
+    for data in _tree.walk(
+        root,
+        to_prune=collapse,
+        iter_container=_tree.iter_nbt(key_sorted),
+        is_container=_tree.is_nbt_container,
+    ):
         yield FQTag(
-            tag=tag,
-            path=_path,
-            key=key,
-            idx=idx,
-            is_collapsed=is_collapsed,
-            is_container=is_container,
-            level=_level,
-            parent=root,
-            root=_root,
+            tag          = data.element,
+            path         = _tree.get_element(Path(), data.keys[:-1]),  # Clever, but inefficient
+            key          = data.keys[-1],  # noqa, Hashable is too broad for KeyType
+            idx          = data.idx,
+            is_container = data.container,
+            is_collapsed = data.pruned,
+            level        = len(data.keys) - 1,
+            parent       = data.parent,  # noqa, Collection is too broad for CompountType
+            root         = data.root,    # noqa, same reason
         )
-        if is_container and not is_collapsed:
-            yield from deep_walk(
-                root=tag,
-                key_sorted=key_sorted,
-                collapse=collapse,
-                _path=_path[key],
-                _level=_level + 1,
-                _root=_root,
-            )
 
 
 def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
