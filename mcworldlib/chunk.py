@@ -115,7 +115,7 @@ class Chunk(nbt.Root):
     def _encode_blockstates(self, data: numpy.ndarray, _palette) -> numpy.ndarray:
         """WIP
 
-        Encode an long array (from BlockStates or Heightmaps)
+        Encode a long array (from BlockStates or Heightmaps)
         :param data: A numpy array of the data to be encoded.
         :return: Encoded array as numpy array
         """

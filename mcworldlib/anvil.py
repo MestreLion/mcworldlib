@@ -6,7 +6,7 @@
 
 Exported items:
     RegionChunk -- Chunk in a Region, inherits from chunk.Chunk
-    RegionFile  -- Collection of RegionChunks in an Region file, inherits from MutableMapping
+    RegionFile  -- Collection of RegionChunks in a Region file, inherits from MutableMapping
 """
 # Named 'anvil' just to let 'region' free for usage without 'import as'
 # Wish the chunk module had a similar uncommon alternative...
@@ -144,8 +144,8 @@ class AnvilFile(collections.abc.MutableMapping):
             # SECTOR_BYTES, we might have sector_count 1 sector over the expected.
             if sector_count not in (chunk.sector_count, chunk.sector_count + 1):
                 log.warning(
-                    f"Length mismatch in {chunk_msg[0]}: region header declares"
-                    " %s %s-byte sectors, but chunk data required %s.",
+                    f'Length mismatch in {chunk_msg[0]}: region header declares'
+                    ' %s %s-byte sectors, but chunk data required %s.',
                     *chunk_msg[1:], sector_count, SECTOR_BYTES, chunk.sector_count
                 )
 
@@ -259,7 +259,7 @@ class RegionFile(AnvilFile):
     regions   -- Collection this region belongs to. Derives world, dimension and category
     world     -- parent World that contains this region
     dimension -- Dimension this region is located: Overworld, Nether, End
-    category  -- The subfolder in its Dimension: region, poi, entities, etc
+    category  -- The subfolder in its Dimension: region, poi, entities, etc.
     pos       -- (x, z) relative position in World, also its key in dimension mapping
                  Derived from filename by Regions.load_from_path()
     """
@@ -362,7 +362,7 @@ class RegionChunk(c.Chunk):
     pos          -- (x, z) relative position in Region, also its key in region mapping
     sector_count -- Chunk size, in data sectors (4096 bytes)
     timestamp    -- Last saved, set only by Minecraft client
-    compression  -- Chunk data compression type. Currently only Zlib is used
+    compression  -- Chunk data compression type. Currently, only Zlib is used
     external     -- If chunk data is in external (.mcc) file
     dirty        -- If data was changed and needs saving. Currently unused
     """

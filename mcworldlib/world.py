@@ -50,6 +50,7 @@ class FQWorldTag(t.NamedTuple):
     root:  nbt.Root             # Root tag for fqtag
     fqtag: nbt.FQTag            # Fully qualified tag, i.e, data returned by nbt.walk()
 
+
 class World:
     """Save directory and all related files and objects"""
 
@@ -59,7 +60,7 @@ class World:
         'level',
     )
 
-    # A.K.A Dimension subdirs
+    # A.K.A. Dimension subdirs
     categories: t.Tuple[str, ...] = (
         'region',
         'entities',
@@ -267,7 +268,7 @@ class World:
     @classmethod
     def _load_level_path(cls, path: u.AnyFile, **kwargs) -> t.Tuple[pathlib.Path,
                                                                     level.Level]:
-        """Load possibly custom level.day and determine World path"""
+        """Load possibly custom level.dat and determine World path"""
         if isinstance(path, io.FileIO) and path.name:
             # Assume file-like buffer to level.dat
             if not isinstance(path.name, (str, os.PathLike)):
