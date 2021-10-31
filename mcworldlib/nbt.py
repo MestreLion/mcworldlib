@@ -258,7 +258,7 @@ def deep_walk(
         )
 
 
-def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
+def nbt_explorer(root: AnyTag, root_name: str = None, width: int = 2) -> None:
     """Walk NBT just like NBT Explorer!
 
     - Compounds first, then Lists (of all types), then leaf values. Arrays last
@@ -266,36 +266,29 @@ def nbt_explorer(root: AnyTag, width: int = 2, offset: int = 0) -> None:
     - Include item count for Compounds, Lists and Arrays
     - Arrays collapsed as leaves
     """
-    # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
-    margin = ""
-    previous = 0
-    for tag in deep_walk(
-        root,
-        collapse=lambda tg: isinstance(tg, Array),
-        key_sorted=lambda item: (
+    def sort_key(item):
+        return (
             # if "not" looks confusing, remember False comes before True when sorting
             not isinstance(item[1], Compound),
             not isinstance(item[1], List),
             isinstance(item[1], Array),
             item[0].lower(),
-        ),
-    ):
-        value = f"{len(tag.tag)} entries" if tag.is_container else tag.tag
-        is_expanded = tag.is_container and not tag.is_collapsed and len(tag.tag) > 0
-        last  = tag.idx == len(tag.parent) - 1
-        prefix = (("╰" if last else "├") + ("─" * width)) if tag.level else ""
-        if tag.level < previous:
-            margin = margin[:-(width + 1 + offset) * (previous - tag.level)]
-        marker = (
-            "⊟" if is_expanded  else
-            "⊕" if tag.is_collapsed else
-            "⊞" if tag.is_container else
-            "─"  # leaf
         )
-        print(f"{margin}{prefix}{marker} {tag.key:2}: {value}")
-        previous = tag.level
-        if is_expanded and tag.level:
-            margin += ((" " if last else "│") + " " * (width + offset))
+    iterator = _tree.walk(
+        root,
+        to_prune=lambda _: isinstance(_, Array),
+        iter_container=_tree.iter_nbt(sort_key),
+        is_container=_tree.is_nbt_container,
+    )
+    _tree.print_tree(
+        (),
+        iterator=iterator,
+        noun_plural="entries", noun_singular="entry",
+        fmt_container="{length} {noun}",
+        show_root_as=root_name,
+        width=width,
+        indent_first_gen=False,
+    )
 
 
 # Add .pretty() method to all NBT tags

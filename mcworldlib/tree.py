@@ -198,29 +198,7 @@ def is_nbt_container(tag: 'nbt.AnyTag') -> bool:
     return not tag.is_leaf
 
 
-def nbt_explorer(data, root_name: str = None):
-    def sort(item: Tuple[str, nbt.AnyTag]) -> Tuple:
-        return (
-            # if "not" looks confusing, remember False comes before True when sorting
-            not isinstance(item[1], nbt.Compound),
-            not isinstance(item[1], nbt.List),
-            isinstance(item[1], nbt.Array),
-            item[0].lower(),
-        )
-    iterator = walk(
-        data,
-        to_prune=lambda _: isinstance(_, nbt.Array),
-        is_container=lambda _: not _.is_leaf,
-        iter_container=iter_nbt(sort),
-    )
-    print_tree(
-        (),
-        iterator=iterator,
-        noun_plural="entries", noun_singular="entry",
-        fmt_container="{length} {noun}",
-        show_root_as=root_name,
-    )
-
+# ----------------------------------
 
 def tests():
     import json
@@ -237,4 +215,4 @@ def tests():
         print_tree(data, show_root_as=data.__class__.__name__)
         if isinstance(data, nbt.File):
             print("*" * 70)
-            nbt_explorer(data, root_name="level.dat")
+            nbt.nbt_explorer(data, root_name="level.dat")
