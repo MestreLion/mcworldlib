@@ -82,7 +82,7 @@ def diamonds():
 def new_diamonds():
     world = mc.load('New World')
 
-    for item in world['']['Data']['Player']['Inventory']:
+    for item in world.level['Data']['Player']['Inventory']:
         item['id'] = mc.String('minecraft:diamond_block')
         item['Count'] = mc.Byte(64)
 
@@ -194,8 +194,8 @@ def inventory_diamonds(world=None, save=False):
     for item in inventory:
         print(f"Slot {item['Slot']:3}: {item['Count']:2} x {item['id']}")
 
+    # free_slots = set(range(9, 36)) - set(item['Slot'] for item in inventory)
     free_slots = set(range(36)) - set(item['Slot'] for item in inventory)
-    free_slots = set(range(9, 36)) - set(item['Slot'] for item in inventory)
     for slot in free_slots:
         print(f"Adding 64 blocks of Diamond to inventory slot {slot}")
         item = mc.Compound({

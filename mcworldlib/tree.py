@@ -213,7 +213,7 @@ def tests():
                        "8b4accb8-d952-4050-97f2-e00c4423ba92.json")),
         nbt.load_dat("../data/New World/level.dat"),
         [{"x": 1, "y": 2}, "a", ((4, {"z": 5}, "b"), 6, "c")],
-        "rodrigo",
+        {"name": ["Rodrigo", ("E", "S"), "Silva"], "alias": "MestreLion"}
     ):
         print("=" * 70)
         print_walk(data)
