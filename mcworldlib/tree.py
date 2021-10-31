@@ -23,6 +23,12 @@ via []. Sequences and Mappings are, Sequences having their integer index as key.
 Sets can be cast to Sequence to satisfy this.
 """
 
+__all__ = [
+    "Item",
+    "walk",
+    "print_tree",
+    "print_walk",
+]
 from collections.abc import Collection, Sequence, Mapping, ByteString
 from typing import (
     Callable, Tuple, Any, Iterator, Hashable, Union, NamedTuple, Iterable, Optional

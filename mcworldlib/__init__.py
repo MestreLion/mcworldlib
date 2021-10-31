@@ -22,6 +22,7 @@ from .chunk  import *
 from .cli    import *
 from .level  import *
 from .nbt    import *
+from .tree   import Item, print_tree, walk as walk_data
 from .world  import *
 from .util   import *
 

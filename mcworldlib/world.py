@@ -238,7 +238,7 @@ class World:
                 )
 
     @classmethod
-    def load(cls, path: u.AnyPath, **kwargs):
+    def load(cls, path: u.AnyPath, **kwargs) -> 'World':
         self: 'World' = cls()
 
         # /level.dat and directory path
