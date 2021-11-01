@@ -24,7 +24,7 @@ import zlib    as _zlib
 # not in nbtlib.tag.__all__ and only used here
 # noinspection PyProtectedMember
 from nbtlib.tag import (
-    Base as _Base,
+    Base,
     BYTE as _BYTE,
     read_numeric  as _read_numeric,
     read_string   as _read_string,
@@ -292,9 +292,9 @@ def nbt_explorer(root: AnyTag, root_name: str = None, width: int = 2) -> None:
 
 
 # Add .pretty() method to all NBT tags
-_Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
+Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 
-_Base.is_leaf = property(
+Base.is_leaf = property(
     fget=lambda _: not isinstance(_, (Compound, List, Array)),
     doc="If this tag an immutable tag and not a Mutable Collection."
         " Non-leaves are the containers excluding String: Compound, List, Array")
