@@ -34,8 +34,18 @@
 	- Can't (trivially) override typing.NamedTuple.__new__, or subclass it
 	- dataclasses also do not accept single iterable in constructor, and are not isinstance(tuple)
 	- No other is as fast as NamedTuple: https://death.andgravity.com/namedtuples
+- Minecraft Data Model:
+	- Classes are not tied to NBT, only on save()/load()
+	- Constructor gets references to parent and globals, assign empty instances to attributes
+		- def __init__(parent, ...): self.parent=parent; self.x = 0; self.y = Y(self)
+	- save() gets an NBT container to save at, created by caller, usually empty, and fill with data
+		- def save(tag): tag['x'] = Tag(self.x); tag['y'] = self.y.save(Tag())
+	- load() gets an NBT container with data and assign self attributes
+		- def load(tag): self.x = tag['x'].unpack(); self.y.load(tag['y'])
+
 
 Similar tools:
+https://github.com/TkTech/PyNBT
 https://github.com/Amulet-Team/Amulet-NBT
 https://github.com/twoolie/NBT
 https://github.com/nwesterhausen/py-mcdata-to-json

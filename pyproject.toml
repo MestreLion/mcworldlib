@@ -6,6 +6,8 @@
 #   pip --no-use-pep517, comment-out build-backend here, ...
 # ... or just give up and use poetry.
 
+# See https://github.com/pypa/pip/issues/7953
+
 [build-system]
 requires = [
 	"setuptools>=42.0.0",  # Support license_files
