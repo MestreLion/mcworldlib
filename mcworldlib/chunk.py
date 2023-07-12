@@ -58,7 +58,8 @@ class Chunk(nbt.Root):
             if palette:
                 blocks[Y] = palette, indexes
         for Y in sorted(blocks):
-            yield Y, *blocks[Y]
+            # noinspection PyRedundantParentheses
+            yield (Y, *blocks[Y])
 
     # noinspection PyPep8Naming
     def get_section_blocks(self, Y: int, _section=None):
