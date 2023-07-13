@@ -108,7 +108,6 @@ class Root(Compound):
         return name, self[name]
 
     # Copy parse() and write() methods from _File
-    # Also remove from _File so super() calls in File works properly
 
     @classmethod
     def parse(cls: t.Type[RT], fileobj, byteorder='big') -> RT:
@@ -126,14 +125,12 @@ class Root(Compound):
         self: RT = super().parse(fileobj, byteorder)
         self.root_name = name
         return self
-    del _File.parse
 
     def write(self, fileobj, byteorder="big"):
         """Override :meth:`nbtlib.tag.Base.write` for nbt files."""
         _write_numeric(_BYTE, self.tag_id, fileobj, byteorder)
         _write_string(self.root_name, fileobj, byteorder)
         super().write(fileobj, byteorder)
-    del _File.write
 
     def __repr__(self):
         key, data = self._data_root  # save refs for efficiency
@@ -303,6 +300,10 @@ Base.is_leaf = property(
     fget=lambda _: not isinstance(_, (Compound, List, Array)),
     doc="If this tag an immutable tag and not a Mutable Collection."
         " Non-leaves are the containers excluding String: Compound, List, Array")
+
+# Remove _File methods copied to Root so super() calls from File works properly
+del _File.parse
+del _File.write
 
 # Convenience shortcuts
 load_mcc = File.load_mcc
