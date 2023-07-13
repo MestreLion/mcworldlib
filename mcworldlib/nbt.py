@@ -21,6 +21,16 @@ import zlib    as _zlib
 #   - compound['string'] = 'foo' -> compound['string'] = String('foo')
 #   - maybe this is only meant for nbtlib.Schema?
 
+# not in nbtlib.tag.__all__ and only used in Root
+# noinspection PyProtectedMember
+from nbtlib.tag import (
+    BYTE as _BYTE,
+    read_numeric as _read_numeric,
+    read_string as _read_string,
+    write_numeric as _write_numeric,
+    write_string as _write_string,
+)
+
 from nbtlib.tag import *
 from nbtlib.tag import Array  # Not in __all__, but used by others
 from nbtlib.nbt import File as _File  # intentionally not importing load
@@ -59,7 +69,13 @@ RT = t.TypeVar('RT', bound='Root')
 class Root(Compound):
     """Unnamed Compound tag, the root tag in files and chunks"""
 
-    __slots__ = ()
+    __slots__ = (
+        'root_name',
+    )
+
+    def __init__(self, *args, root_name: str = "", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.root_name: str = root_name
 
     @property
     def data_root(self) -> Compound:
@@ -91,17 +107,40 @@ class Root(Compound):
         # FIXME: Should make sure it's actually a Compound and not just AnyTag
         return name, self[name]
 
-    # Copy some methods from _File, so super() calls works properly
-    # See https://youtrack.jetbrains.com/issue/PY-9342 on 'noinspection' below
-    # noinspection PyUnresolvedReferences
-    parse = classmethod(_File.parse.__func__)
-    write = _File.write
+    # Copy parse() and write() methods from _File
+    # Also remove from _File so super() calls in File works properly
+
+    @classmethod
+    def parse(cls: t.Type[RT], fileobj, byteorder='big') -> RT:
+        """Override :meth:`nbtlib.tag.Base.parse` for nbt files."""
+        # For the typing dance, see https://stackoverflow.com/a/44644576/624066
+        tag_id = _read_numeric(_BYTE, fileobj, byteorder)
+        if not tag_id == cls.tag_id:
+            # Possible issues with a non-Compound root:
+            # - root_name might not be in __slots__(), and thus not assignable
+            # - not returning a superclass might be surprising and have side effects
+            raise TypeError(
+                f"Non-Compound root tag is not supported: {cls.get_tag(tag_id)}"
+            )
+        name = _read_string(fileobj, byteorder)
+        self: RT = super().parse(fileobj, byteorder)
+        self.root_name = name
+        return self
+    del _File.parse
+
+    def write(self, fileobj, byteorder="big"):
+        """Override :meth:`nbtlib.tag.Base.write` for nbt files."""
+        _write_numeric(_BYTE, self.tag_id, fileobj, byteorder)
+        _write_string(self.root_name, fileobj, byteorder)
+        super().write(fileobj, byteorder)
+    del _File.write
 
     def __repr__(self):
         key, data = self._data_root  # save refs for efficiency
         if key:
             key = f" ({len(data)} in {key!r})"
-        return f'<{self.__class__.__name__} tags: {len(self)}{key}>'
+        name = f" {self.root_name!r}" if self.root_name else ""
+        return f'<{self.__class__.__name__}{name} tags: {len(self)}{key}>'
 
 
 # Overrides and extensions
