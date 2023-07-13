@@ -437,8 +437,10 @@ class RegionChunk(c.Chunk):
 
         external, compression = cls._unpack_compression(compression)
         if compression not in COMPRESSION_TYPES:
-            raise ChunkError('Invalid compression type, must be one of'
-                             f' {COMPRESSION_TYPES}: {compression}')
+            raise ChunkError(
+                "Invalid compression type, must be one of "
+                f"{COMPRESSION_TYPES}: {compression}"
+            )
 
         if external:
             raise ChunkError('External MCC data file is not yet supported')
