@@ -91,9 +91,11 @@ class Root(Compound):
         # FIXME: Should make sure it's actually a Compound and not just AnyTag
         return name, self[name]
 
-    # Move some methods from File. Keeping them there would confuse super() calls
-    parse = _File.parse; del _File.parse
-    write = _File.write; del _File.write
+    # Copy some methods from _File, so super() calls works properly
+    # See https://youtrack.jetbrains.com/issue/PY-9342 on 'noinspection' below
+    # noinspection PyUnresolvedReferences
+    parse = classmethod(_File.parse.__func__)
+    write = _File.write
 
     def __repr__(self):
         key, data = self._data_root  # save refs for efficiency
