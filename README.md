@@ -72,12 +72,12 @@ You can open a Minecraft World by several ways:
 {   <Dimension.OVERWORLD: 0>: {   'entities': <Regions(6 regions)>,
                                   'poi': <Regions(0 regions)>,
                                   'region': <Regions(6 regions)>},
-    <Dimension.THE_END: 1>: {   'entities': <Regions(0 regions)>,
-                                'poi': <Regions(0 regions)>,
-                                'region': <Regions(0 regions)>},
     <Dimension.THE_NETHER: -1>: {   'entities': <Regions(0 regions)>,
                                     'poi': <Regions(0 regions)>,
-                                    'region': <Regions(0 regions)>}}
+                                    'region': <Regions(0 regions)>},
+    <Dimension.THE_END: 1>: {   'entities': <Regions(0 regions)>,
+                                'poi': <Regions(0 regions)>,
+                                'region': <Regions(0 regions)>}}
 
 ```
 
@@ -86,8 +86,8 @@ category, similarly with `World.entities` and `World.poi`:
 ```pycon
 >>> mc.pretty(world.regions)
 {   <Dimension.OVERWORLD: 0>: <Regions(6 regions)>,
-    <Dimension.THE_END: 1>: <Regions(0 regions)>,
-    <Dimension.THE_NETHER: -1>: <Regions(0 regions)>}
+    <Dimension.THE_NETHER: -1>: <Regions(0 regions)>,
+    <Dimension.THE_END: 1>: <Regions(0 regions)>}
 
 >>> regions = world.regions[mc.OVERWORLD]
 >>> regions is world.dimensions[mc.OVERWORLD]['region']
@@ -178,7 +178,7 @@ Get the block info at any coordinate:
 ```pycon
 >>> block = world.get_block_at((100, 60, 100))
 >>> print(block)
-{Name: "minecraft:stone"}
+Compound({'Name': String('minecraft:stone')})
 
 ```
 
@@ -300,41 +300,41 @@ How about some NBT Explorer nostalgia?
 ...
 ├──⊟ Player: 37 entries
 │  ├──⊟ abilities: 7 entries
-│  │  ├─── flying: 0b
+│  │  ├─── flying: Byte(0)
 ...
-│  │  ╰─── walkSpeed: 0.10000000149011612f
+│  │  ╰─── walkSpeed: Float(0.10000000149011612)
 │  ├──⊟ Brain: 1 entry
 │  │  ╰──⊞ memories: 0 entries
 ...
 │  ├──⊟ Inventory: 11 entries
 │  │  ├──⊟  0: 4 entries
 │  │  │  ├──⊟ tag: 1 entry
-│  │  │  │  ╰─── Damage: 0
-│  │  │  ├─── Count: 1b
+│  │  │  │  ╰─── Damage: Int(0)
+│  │  │  ├─── Count: Byte(1)
 │  │  │  ├─── id: minecraft:stone_axe
-│  │  │  ╰─── Slot: 0b
+│  │  │  ╰─── Slot: Byte(0)
 ...
 │  │  ╰──⊟ 10: 4 entries
 │  │     ├──⊟ tag: 1 entry
-│  │     │  ╰─── Damage: 18
-│  │     ├─── Count: 1b
+│  │     │  ╰─── Damage: Int(18)
+│  │     ├─── Count: Byte(1)
 │  │     ├─── id: minecraft:wooden_pickaxe
-│  │     ╰─── Slot: 28b
+│  │     ╰─── Slot: Byte(28)
 ...
-│  ├─── XpTotal: 37
+│  ├─── XpTotal: Int(37)
 │  ╰──⊕ UUID: 4 entries
 ├──⊟ Version: 3 entries
-│  ├─── Id: 2730
+│  ├─── Id: Int(2730)
 │  ├─── Name: 1.17.1
-│  ╰─── Snapshot: 0b
+│  ╰─── Snapshot: Byte(0)
 ...
 ├──⊞ ScheduledEvents: 0 entries
 ├──⊟ ServerBrands: 1 entry
 │  ╰─── 0: fabric
-├─── allowCommands: 0b
+├─── allowCommands: Byte(0)
 ...
-├─── WanderingTraderSpawnDelay: 19200
-╰─── WasModded: 1b
+├─── WanderingTraderSpawnDelay: Int(19200)
+╰─── WasModded: Byte(1)
 
 ```
 You want to click that tree, don't you? Sweet `Array` "icon" for `UUID`!
