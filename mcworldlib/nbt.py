@@ -21,22 +21,9 @@ import zlib    as _zlib
 #   - compound['string'] = 'foo' -> compound['string'] = String('foo')
 #   - maybe this is only meant for nbtlib.Schema?
 
-# not in nbtlib.tag.__all__ and only used here
-# noinspection PyProtectedMember
-from nbtlib.tag import (
-    Base,
-    BYTE as _BYTE,
-    read_numeric  as _read_numeric,
-    read_string   as _read_string,
-    write_numeric as _write_numeric,
-    write_string  as _write_string,
-)
 from nbtlib.tag import *
-# noinspection PyProtectedMember, PyUnresolvedReferences
 from nbtlib.tag import Array  # Not in __all__, but used by others
-# noinspection PyUnresolvedReferences
 from nbtlib.nbt import File as _File  # intentionally not importing load
-# noinspection PyUnresolvedReferences
 from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
@@ -72,13 +59,7 @@ RT = t.TypeVar('RT', bound='Root')
 class Root(Compound):
     """Unnamed Compound tag, the root tag in files and chunks"""
 
-    __slots__ = (
-        'root_name',
-    )
-
-    def __init__(self, *args, root_name: str = "", **kwargs):
-        super().__init__(*args, **kwargs)
-        self.root_name: str = root_name
+    __slots__ = ()
 
     @property
     def data_root(self) -> Compound:
@@ -110,32 +91,15 @@ class Root(Compound):
         # FIXME: Should make sure it's actually a Compound and not just AnyTag
         return name, self[name]
 
-    @classmethod
-    def parse(cls: t.Type[RT], buff, byteorder='big') -> RT:
-        # For the typing dance, see https://stackoverflow.com/a/44644576/624066
-        tag_id = _read_numeric(_BYTE, buff, byteorder)
-        if not tag_id == cls.tag_id:
-            # Possible issues with a non-Compound root:
-            # - root_name might not be in __slots__(), and thus not assignable
-            # - not returning a superclass might be surprising and have side effects
-            raise TypeError("Non-Compound root tags is not supported:"
-                            f"{cls.get_tag(tag_id).__name__}")
-        name = _read_string(buff, byteorder)
-        self: RT = super().parse(buff, byteorder)
-        self.root_name = name
-        return self
-
-    def write(self, buff, byteorder='big') -> None:
-        _write_numeric(_BYTE, self.tag_id, buff, byteorder)
-        _write_string(getattr(self, 'root_name', "") or "", buff, byteorder)
-        super().write(buff, byteorder)
+    # Move some methods from File. Keeping them there would confuse super() calls
+    parse = _File.parse; del _File.parse
+    write = _File.write; del _File.write
 
     def __repr__(self):
         key, data = self._data_root  # save refs for efficiency
         if key:
             key = f" ({len(data)} in {key!r})"
-        name = f" {self.root_name!r}" if self.root_name else ""
-        return f'<{self.__class__.__name__}{name} tags: {len(self)}{key}>'
+        return f'<{self.__class__.__name__} tags: {len(self)}{key}>'
 
 
 # Overrides and extensions
@@ -153,7 +117,7 @@ class File(Root, _File):
     def load_mcc(cls, filename):
         with open(filename, 'rb') as buff:
             data = _io.BytesIO(_zlib.decompress(buff.read()))
-        self = cls.from_buffer(data)
+        self = cls.parse(data)
         self.filename = filename
         return self
 
@@ -298,17 +262,6 @@ Base.is_leaf = property(
     fget=lambda _: not isinstance(_, (Compound, List, Array)),
     doc="If this tag an immutable tag and not a Mutable Collection."
         " Non-leaves are the containers excluding String: Compound, List, Array")
-
-# Fix String.__str__. Not needed in modern nbtlib versions
-String.__str__ = lambda self: str.__str__(self)
-
-# Ensure the trailing End Tag gets written.
-# See https://github.com/vberlier/nbtlib/issues/153
-del _File.end_tag
-
-# Just in case, as now we have a very different meaning for .root_name
-delattr(_File, 'root')
-delattr(_File, 'root_name')
 
 # Convenience shortcuts
 load_mcc = File.load_mcc
