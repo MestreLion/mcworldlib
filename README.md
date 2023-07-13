@@ -367,7 +367,7 @@ Patches are welcome! Fork, hack, request pull! Here is a succinct to-do list:
 See the [To-Do List](./TODO.txt) for more updated technical information and
 planned features.
 
-If you find a bug or have any enhancement request, please to open a
+If you find a bug or have any enhancement request, please open a
 [new issue](https://github.com/MestreLion/mcworldlib/issues/new)
 
 
