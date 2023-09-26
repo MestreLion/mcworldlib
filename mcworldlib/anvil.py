@@ -36,7 +36,7 @@ from . import util as u
 
 
 # Constants
-# https://minecraft.gamepedia.com/Region_file_format
+# https://minecraft.wiki/w/Region_file_format
 CHUNK_LOCATION_BYTES = 4  # Chunk offset and sector count. Must be power of 2
 CHUNK_TIMESTAMP_BYTES = 4  # Unix timestamp, seconds after epoch.
 CHUNK_SECTOR_COUNT_BYTES = 1  # Assumed to be the least significant from CHUNK_LOCATION_BYTES
@@ -105,7 +105,7 @@ class AnvilFile(collections.abc.MutableMapping):
     def parse(cls: t.Type[RT], buff: t.BinaryIO, **initkw) -> RT:
         """Parse region from file-like object, build an instance and return it
 
-        https://minecraft.gamepedia.com/Region_file_format
+        https://minecraft.wiki/w/Region_file_format
         """
         self: RT = cls(**initkw)
         if not self.filename:
