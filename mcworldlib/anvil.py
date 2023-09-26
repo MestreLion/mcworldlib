@@ -420,7 +420,7 @@ class RegionChunk(c.Chunk):
               region: AnvilFile = None, pos=None, timestamp=None,
               *args, **kwargs) -> T:
         """
-        https://minecraft.fandom.com/wiki/Region_file_format#Chunk_data
+        https://minecraft.wiki/w/Region_file_format#Chunk_data
         https://www.reddit.com/r/technicalminecraft/comments/e4wxb6/
         """
         if not hasattr(buff, 'read'):  # assume bytes data

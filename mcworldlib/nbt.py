@@ -229,7 +229,7 @@ def deep_walk(
         parent[key] == tag
 
     Path is the parent tag location in the root tag, compatible with the format
-    described at https://minecraft.fandom.com/wiki/NBT_path_format. That holds
+    described at https://minecraft.wiki/w/NBT_path_format. That holds
     true even when path is empty, i.e., when the parent tag is root. So:
         root[path][name] == root[path[name]] == tag
 

@@ -12,9 +12,9 @@ on top of it and add more _semantics_ to that data.
 ---
 Features
 --------
-- Read and write `.dat` [NBT](https://minecraft.fandom.com/wiki/NBT_format)
+- Read and write `.dat` [NBT](https://minecraft.wiki/w/NBT_format)
   files, both uncompressed and gzip-compressed.
-- Read and write `.mca`/`.mcr` [Anvil](https://minecraft.fandom.com/wiki/Anvil_file_format)
+- Read and write `.mca`/`.mcr` [Anvil](https://minecraft.wiki/w/Anvil_file_format)
   region files, lazily loading their contents only when the data is actually
   requested, also monitoring content changes to efficiently save back to disk
   only the needed files.
