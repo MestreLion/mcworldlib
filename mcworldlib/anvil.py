@@ -294,6 +294,9 @@ class RegionFile(AnvilFile):
 
         return u.RegionPos(*map(int, m.groups()))
 
+    def uncache(self):
+        self.regions.uncache(self.pos)
+
 
 class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
     """Collection of RegionFiles"""
@@ -333,6 +336,7 @@ class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
         self = cls.load_from_path(path)
         self.world = world
         self.dimension = dimension
+        self.path = path
         return self
 
     @classmethod
@@ -352,6 +356,37 @@ class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
             self[pos] = filepath
 
         return self
+
+    def uncache(self, pos: u.RegionPos, recursive: bool = False):
+        """Uncaches a region.
+
+        Note that if the `RegionFile` is referenced elsewhere,
+        memory will not be freed, due to how python's garbage collector works.
+
+        Also if the underlying file has been deleted, the `RegionPos` entry will
+        be removed entirely from this `Regions` instance.
+
+        Args:
+            pos: The `RegionPos` corresponding to the `RegionFile` to uncache.
+            recursive: If `True`, will look recursively inside the `Regions`'s
+                folder for the region file. If false, will only look in the
+                immediate folder.
+        """
+        if pos not in self._items:
+            raise KeyError(f"Region {pos} does not exists in {self}")
+        if not self._is_loaded(pos, self._items[pos]):
+            log.info("Region %s is not loaded. Uncache will do nothing", pos)
+            return
+
+        candidates = list(pathlib.Path(self.path).glob(
+            f"{'**/' if recursive else ''}r.{pos.filepart}.mca"))
+        if len(candidates) == 0:
+            self._items.pop(pos)
+            log.warning("Region source file %s not found in %s. "
+                        "Entry will be deleted", pos, self.path)
+            return
+
+        self._items[pos] = candidates[0]
 
 
 class RegionChunk(c.Chunk):
