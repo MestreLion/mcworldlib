@@ -51,7 +51,7 @@ class Chunk(nbt.Root):
         Palette, Indexes: See get_section_blocks()
         """
         blocks = {}
-        for section in self.data_root['Sections']:
+        for section in self.data_root['sections']:
             # noinspection PyPep8Naming
             Y = int(section['Y'])
             palette, indexes = self.get_section_blocks(Y, _section=section)
@@ -70,17 +70,23 @@ class Chunk(nbt.Root):
         """
         section = _section
         if not section:
-            for section in self.data_root.get('Sections', []):
+            for section in self.data_root.get('sections', []):
                 if section.get('Y') == Y:
                     break
             else:
                 return None, None
 
-        if 'Palette' not in section or 'BlockStates' not in section:
+        if 'block_states' not in section:
             return None, None
 
-        palette = section['Palette']
-        indexes = self._decode_blockstates(section['BlockStates'], palette)
+        states = section['block_states']
+
+        palette = states['palette']
+
+        if 'data' not in states:
+            return palette, numpy.zeros((u.SECTION_HEIGHT, *reversed(u.CHUNK_SIZE)))
+
+        indexes = self._decode_blockstates(states['data'], palette)
         return palette, indexes.reshape((u.SECTION_HEIGHT, *reversed(u.CHUNK_SIZE)))
 
     def _decode_blockstates(self, data, palette=None):
