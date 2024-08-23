@@ -443,9 +443,14 @@ class RegionChunk(c.Chunk):
             )
 
         if external:
-            raise ChunkError('External MCC data file is not yet supported')
+            fixedPos = region.pos.to_chunk(pos)
+            mcc_filename = region.filename.parent / f"c.{fixedPos[0]}.{fixedPos[1]}.mcc"
+            with open(mcc_filename, mode='rb') as f:
+                compressed_data = f.read()
+        else:
+            compressed_data = buff.read(length)
 
-        data = cls.decompress[compression](buff.read(length))
+        data = cls.decompress[compression](compressed_data)
         self: T = super().parse(io.BytesIO(data), *args, **kwargs)
 
         self.region = region
