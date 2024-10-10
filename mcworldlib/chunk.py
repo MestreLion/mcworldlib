@@ -92,9 +92,9 @@ class Chunk(nbt.Root):
     
     def get_blocks(self):
         if self.is_version_1_21():
-            yield self.get_blocks_1_21()
+            return self.get_blocks_1_21()
         else:
-            yield self.get_blocks_old()
+            return self.get_blocks_old()
 
 
     def get_section_blocks(self, Y: int, _section=None):
