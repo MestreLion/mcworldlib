@@ -44,11 +44,19 @@ class Chunk(nbt.Root):
     def entities(self, value: nbt.List[nbt.Compound]):
         self.data_root['Entities'] = value
 
-    def get_blocks(self):
-        """Yield a (Y, Palette, BlockState Indexes Array) tuple for every chunk section.
+
+    def is_version_1_21(self):
+        if "sections" in self.data_root:
+            return True
+        else:
+            return False
+
+
+    def get_blocks_1_21(self):
+        """Yield a (Y, palette, block_states Indexes Array) tuple for every chunk section.
 
         Y: Y "level" of the section, the section "index" (NOT the NBT section index!)
-        Palette, Indexes: See get_section_blocks()
+        palette, Indexes: See get_section_blocks()
         """
         blocks = {}
         for section in self.data_root['sections']:
@@ -61,12 +69,47 @@ class Chunk(nbt.Root):
             # noinspection PyRedundantParentheses
             yield (Y, *blocks[Y])
 
-    # noinspection PyPep8Naming
-    def get_section_blocks(self, Y: int, _section=None):
-        """Return a (Palette, BlockState Indexes Array) tuple for a chunk section.
 
-        Palette: NBT List of Block States, straight from NBT data
-        Indexes: 16 x 16 x 16 numpy.ndarray, in YZX order, of indexes matching Palette's
+    def get_blocks_old(self):
+        """For version lower than 1.21.1
+        
+        Yield a (Y, Palette, BlockState Indexes Array) tuple for every chunk section.
+
+        Y: Y "level" of the section, the section "index" (NOT the NBT section index!)
+        Palette, Indexes: See get_section_blocks()
+        """
+        blocks = {}
+        for section in self.data_root['Sections']:
+            # noinspection PyPep8Naming
+            Y = int(section['Y'])
+            palette, indexes = self.get_section_blocks(Y, _section=section)
+            if palette:
+                blocks[Y] = palette, indexes
+        for Y in sorted(blocks):
+            # noinspection PyRedundantParentheses
+            yield (Y, *blocks[Y])
+
+    
+    def get_blocks(self, Y: int, _section=None):
+        if self.is_version_1_21():
+            return self.get_blocks_1_21(Y, _section)
+        else:
+            return self.get_blocks_old(Y, _section)
+
+
+    def get_section_blocks(self, Y: int, _section=None):
+        if self.is_version_1_21():
+            return self.get_section_blocks_1_21(Y, _section)
+        else:
+            return self.get_section_blocks_old(Y, _section)
+
+
+    # noinspection PyPep8Naming
+    def get_section_blocks_1_21(self, Y: int, _section=None):
+        """Return a (palette, block_state Indexes Array) tuple for a chunk section.
+
+        palette: NBT List of Block States, straight from NBT data
+        Indexes: 16 x 16 x 16 numpy.ndarray, in YZX order, of indexes matching palette's
         """
         section = _section
         if not section:
@@ -88,6 +131,31 @@ class Chunk(nbt.Root):
 
         indexes = self._decode_blockstates(states['data'], palette)
         return palette, indexes.reshape((u.SECTION_HEIGHT, *reversed(u.CHUNK_SIZE)))
+    
+
+    def get_section_blocks_old(self, Y: int, _section=None):
+        """For version lower than 1.21.1
+
+        Return a (Palette, BlockState Indexes Array) tuple for a chunk section.
+
+        Palette: NBT List of Block States, straight from NBT data
+        Indexes: 16 x 16 x 16 numpy.ndarray, in YZX order, of indexes matching Palette's
+        """
+        section = _section
+        if not section:
+            for section in self.data_root.get('Sections', []):
+                if section.get('Y') == Y:
+                    break
+            else:
+                return None, None
+
+        if 'Palette' not in section or 'BlockStates' not in section:
+            return None, None
+
+        palette = section['Palette']
+        indexes = self._decode_blockstates(section['BlockStates'], palette)
+        return palette, indexes.reshape((u.SECTION_HEIGHT, *reversed(u.CHUNK_SIZE)))
+
 
     def _decode_blockstates(self, data, palette=None):
         """Decode an NBT BlockStates LongArray to a block state indexes array"""
