@@ -167,23 +167,24 @@ class Chunk(nbt.Root):
             if not palette:
                 # Infer from data length (not the way described by Wiki!)
                 return bits_from_data()
-            bit_length = max(self.BS_MIN_BITS, (len(palette) - 1).bit_length())
+            bit_length = max(self.BS_MIN_BITS, (len(palette)).bit_length())
             assert bit_length == bits_from_data(), \
                 f"BlockState bits mismatch: {bit_length} != {bits_from_data()}"
             return bit_length
 
         bits = bits_per_index()
+        padding_per_long = 64 % bits
         # Adapted from Amulet-Core's decode_long_array()
         # https://github.com/Amulet-Team/Amulet-Core/blob/develop/amulet/utils/world_utils.py
         indexes = numpy.packbits(
             numpy.pad(
                 numpy.unpackbits(
-                        data[::-1].astype(f">i{pack_bits//8}").view(f"uint{pack_bits//8}")
-                    ).reshape(-1, bits),
+                        data[::-1].astype(f">i{pack_bits//8}").view(f"uint{pack_bits//8}").unpack()
+                    ).reshape(-1, 64)[:, padding_per_long:64].reshape(-1, bits),
                 [(0, 0), (pack_bits - bits, 0)],
                 "constant",
             )
-        ).view(dtype=">q")[::-1]
+        ).view(dtype=">q")[::-1][:4096]
         return indexes
 
     # noinspection PyMethodMayBeStatic
