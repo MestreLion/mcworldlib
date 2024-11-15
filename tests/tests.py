@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
+"""
+Run tests by `python tests/tests.py`
+"""
 
 import io
 import logging
 import os.path
 import sys
 
+sys.path.append(os.path.abspath("."))
 import mcworldlib as mc
-
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)-6s: %(message)s')
 
@@ -80,7 +83,7 @@ def diamonds():
 
 
 def new_diamonds():
-    world = mc.load('New World')
+    world = mc.load('data/New World')
 
     for item in world.level['Data']['Player']['Inventory']:
         item['id'] = mc.String('minecraft:diamond_block')
@@ -128,7 +131,7 @@ def player_pos():
 
 def blocks(w=None):
     if w is None:
-        w = mc.load('New World')
+        w = mc.load('data/New World')
 
     for chunk in [w.player.get_chunk()]:  # w.get_chunks(False):
         print(chunk)
