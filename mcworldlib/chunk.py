@@ -167,7 +167,7 @@ class Chunk(nbt.Root):
             if not palette:
                 # Infer from data length (not the way described by Wiki!)
                 return bits_from_data()
-            bit_length = max(self.BS_MIN_BITS, (len(palette)).bit_length())
+            bit_length = max(self.BS_MIN_BITS, (len(palette) - 1).bit_length())
             assert bit_length == bits_from_data(), \
                 f"BlockState bits mismatch: {bit_length} != {bits_from_data()}"
             return bit_length
