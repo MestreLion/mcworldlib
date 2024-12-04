@@ -38,6 +38,7 @@ from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
 
 from . import tree as _tree
+from . import util as _u
 
 _log = _logging.getLogger(__name__)
 
@@ -132,6 +133,9 @@ class Root(Compound):
         _write_string(self.root_name, fileobj, byteorder)
         super().write(fileobj, byteorder)
 
+    def check_tags(self):
+        return check_tags(self)
+
     def __repr__(self):
         key, data = self._data_root  # save refs for efficiency
         if key:
@@ -151,6 +155,8 @@ class File(Root, _File):
         # make gzipped an optional argument, defaulting to True
         return super().load(filename, gzipped=gzipped, *args, **kwargs)
 
+    load.__doc__ = _File.load.__doc__
+
     @classmethod
     def load_mcc(cls, filename):
         with open(filename, 'rb') as buff:
@@ -158,6 +164,16 @@ class File(Root, _File):
         self = cls.parse(data)
         self.filename = filename
         return self
+
+    def save(self, filename=None, *, gzipped=None, byteorder=None, check=True):
+        if check and not self.check_tags():
+            raise _u.MCError(
+                "Invalid NBT being written to '%s', not saving!",
+                self.filename if filename is None else filename,
+            )
+        super().save(filename=filename, gzipped=gzipped, byteorder=byteorder)
+
+    save.__doc__ = _File.save.__doc__
 
     def __repr__(self):
         name = self.__class__.__name__
@@ -291,6 +307,29 @@ def nbt_explorer(root: AnyTag, root_name: str = None, width: int = 2) -> None:
         width=width,
         indent_first_gen=False,
     )
+
+
+def check_tags(root: object, root_cls: t.Optional[AnyTag] = Compound) -> bool:
+    """Check if all children of an NBT `root` container are NBT tags, recursively.
+
+    If `root_cls` is not `None`, `Compound` by default, also check if the root
+    itself is an instance of it.
+    """
+    if root_cls is not None and not isinstance(root, root_cls):
+        _log.warning(
+            "NBT root class is not an instance of %r: %s",
+            root_cls.__name__,
+            type(root)
+        )
+        return False
+    ret = True
+    for fqtag in deep_walk(root):
+        item = fqtag.tag
+        if not isinstance(item, Base):
+            _log.warning("Not an NBT tag at %s: %s", fqtag.path, type(item))
+            ret = False
+            # intentionally not using `break` so all warnings are emitted
+    return ret
 
 
 # Add .pretty() method to all NBT tags

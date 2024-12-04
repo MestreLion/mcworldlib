@@ -153,13 +153,18 @@ class AnvilFile(collections.abc.MutableMapping):
 
         return self
 
-    def save(self, filename=None, *args, **kwargs):
+    def save(self, filename=None, *args, check=True, **kwargs):
         """Write the file at the specified location."""
         if filename is None:
             filename = self.filename
 
         if filename is None:
             raise ValueError('No filename specified')
+
+        if check and not all(chunk.check_tags() for chunk in self.chunks):
+            raise u.MCError(
+                "Invalid NBT being written to '%s', not saving!", filename
+            )
 
         with open(filename, 'wb') as buff:
             self.write(buff, *args, **kwargs)

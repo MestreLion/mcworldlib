@@ -201,7 +201,7 @@ def iter_nbt(sort_key: t.Callable[[t.Tuple[str, 'nbt.AnyTag']], t.Any] = None):
 
 def is_nbt_container(tag: 'nbt.AnyTag') -> bool:
     # noinspection PyUnresolvedReferences
-    return not tag.is_leaf
+    return isinstance(tag, nbt.Base) and not tag.is_leaf
 
 
 # ----------------------------------
