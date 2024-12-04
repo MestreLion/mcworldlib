@@ -53,6 +53,11 @@ def basic_parser(description=None,
                             default=False, action="store_true",
                             help="Apply changes and save the world.")
 
+    # Patch argparse so arguments have a suitable `name` property
+    argparse.Action.name = property(
+        lambda self: argparse.ArgumentError(self, "").argument_name
+    )
+
     return parser
 
 
