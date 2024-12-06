@@ -104,7 +104,7 @@ class World:
 
     @property
     def player(self):
-        """The Single Player """
+        """The Single Player"""
         return self.level.player
 
     @property
