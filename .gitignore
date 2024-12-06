@@ -1,8 +1,16 @@
-# Local tests
+# --------------------------------------------
+# Project-specific ignores
+
+# Scrap dir for examples in README
 data/tests/
 
+# FIXME: This should NOT be here, but in local git template exclude
 # PyCharm IDE
 .idea/
+
+# --------------------------------------------
+# Common ignores, taken from Github template
+# TODO: Update this with current template!
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
