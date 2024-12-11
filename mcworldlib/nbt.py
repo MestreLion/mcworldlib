@@ -36,6 +36,7 @@ from nbtlib.tag import Array  # Not in __all__, but used by others
 from nbtlib.nbt import File as _File  # intentionally not importing load
 from nbtlib.path import Path
 from nbtlib.literal.serializer import serialize_tag as _serialize_tag
+from nbtlib.literal.parser import parse_nbt as from_snbt, InvalidLiteral
 
 from . import tree as _tree
 from . import util as _u
@@ -338,7 +339,8 @@ Base.pretty = lambda self, indent=4: _serialize_tag(self, indent=indent)
 Base.is_leaf = property(
     fget=lambda _: not isinstance(_, (Compound, List, Array)),
     doc="If this tag an immutable tag and not a Mutable Collection."
-        " Non-leaves are the containers excluding String: Compound, List, Array")
+        " Non-leaves are the containers excluding String: Compound, List, Array",
+)
 
 # Remove _File methods copied to Root so super() calls from File works properly
 del _File.parse
