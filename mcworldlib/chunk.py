@@ -22,6 +22,13 @@ T = t.TypeVar('T', bound='Chunk')
 
 # TODO: create an nbt.Schema for it
 class Chunk(nbt.Root):
+    """Base class for Minecraft Chunks.
+
+    This is a Region-less, "free" chunk, not tied to any particular World,
+    but it might be sensitive to its own DataVersion.
+
+    For the Region-(and World-)aware chunk, use anvil.RegionChunk.
+    """
     __slots__ = ()
 
     BS_MIN_BITS = 4  # BlockState index minimum bits
@@ -35,6 +42,23 @@ class Chunk(nbt.Root):
         for i, e in enumerate(self.entities or []):
             self.entities[i] = entity.Entity.subclass(e)
         return self
+
+    @property
+    def data_version(self) -> int | None:
+        """DataVersion of the Chunk.
+
+        If set to None it will delete any existing NBT entry.
+        """
+        if data_version := self.get("DataVersion") is None:
+            return data_version
+        return data_version.unpack()
+
+    @data_version.setter
+    def data_version(self, value: int | None) -> None:
+        if value is None:
+            self.pop("DataVersion", None)
+        else:
+            self["DataVersion"] = nbt.Int(value)
 
     @property
     def entities(self):
