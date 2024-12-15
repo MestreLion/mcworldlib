@@ -8,16 +8,29 @@ Exported items:
     Chunk -- Class representing a Chunk's NBT, inherits from ntb.Root
 """
 
-__all__ = ['Chunk']
+from __future__ import annotations
+
+__all__ = [
+    "Chunk",
+    "ChunkSection",
+]
+
+import math
 
 import numpy
-import typing as t
 
 from . import nbt
 from . import entity
 from . import util as u
+from .util import typing as t
 
 T = t.TypeVar('T', bound='Chunk')
+SectionCoords: t.TypeAlias = tuple[int, int, int]  # (y, z, x)
+Block: t.TypeAlias = nbt.Compound
+BlockDict: t.TypeAlias = dict["BlockPos", Block]
+BlockTuple: t.TypeAlias = tuple["BlockPos", Block]
+
+class ChunkSectionError(u.MCError): pass
 
 
 # TODO: create an nbt.Schema for it
@@ -27,7 +40,7 @@ class Chunk(nbt.Root):
     This is a Region-less, "free" chunk, not tied to any particular World,
     but it might be sensitive to its own DataVersion.
 
-    For the Region-(and World-)aware chunk, use anvil.RegionChunk.
+    For the Region-(thus World-)aware chunk, use anvil.RegionChunk.
     """
     __slots__ = ()
 
@@ -48,6 +61,8 @@ class Chunk(nbt.Root):
         """DataVersion of the Chunk.
 
         If set to None it will delete any existing NBT entry.
+
+        See <https://minecraft.wiki/w/Data_version>
         """
         if data_version := self.get("DataVersion") is None:
             return data_version
@@ -68,44 +83,20 @@ class Chunk(nbt.Root):
     def entities(self, value: nbt.List[nbt.Compound]):
         self.data_root['Entities'] = value
 
-    def get_blocks(self):
-        """Yield a (Y, Palette, BlockState Indexes Array) tuple for every chunk section.
+    def get_sections(self) -> t.Iterator[ChunkSection]:
+        """Iterator of chunk sections as ChunkSection instances."""
+        return (ChunkSection(_, chunk=self) for _ in self.data_root.get("Sections", []))
 
-        Y: Y "level" of the section, the section "index" (NOT the NBT section index!)
-        Palette, Indexes: See get_section_blocks()
-        """
-        blocks = {}
-        for section in self.data_root['Sections']:
-            # noinspection PyPep8Naming
-            Y = int(section['Y'])
-            palette, indexes = self.get_section_blocks(Y, _section=section)
-            if palette:
-                blocks[Y] = palette, indexes
-        for Y in sorted(blocks):
-            # noinspection PyRedundantParentheses
-            yield (Y, *blocks[Y])
+    def get_section(self, Y:int) -> ChunkSection | None:
+        """ChunkSection of the given Y-section, or None if not found."""
+        for section in self.get_sections:
+            if section.Y == Y:
+                return section
+        return None
 
-    # noinspection PyPep8Naming
-    def get_section_blocks(self, Y: int, _section=None):
-        """Return a (Palette, BlockState Indexes Array) tuple for a chunk section.
-
-        Palette: NBT List of Block States, straight from NBT data
-        Indexes: 16 x 16 x 16 numpy.ndarray, in YZX order, of indexes matching Palette's
-        """
-        section = _section
-        if not section:
-            for section in self.data_root.get('Sections', []):
-                if section.get('Y') == Y:
-                    break
-            else:
-                return None, None
-
-        if 'Palette' not in section or 'BlockStates' not in section:
-            return None, None
-
-        palette = section['Palette']
-        indexes = self._decode_blockstates(section['BlockStates'], palette)
-        return palette, indexes.reshape((u.SECTION_HEIGHT, *reversed(u.CHUNK_SIZE)))
+    def get_blocks(self) -> t.Iterator[BlockTuple]:
+        for section in self.get_sections():
+            yield from section.get_blocks().items()
 
     def _decode_blockstates(self, data, palette=None):
         """Decode an NBT BlockStates LongArray to a block state indexes array"""
@@ -151,3 +142,84 @@ class Chunk(nbt.Root):
                 -1, 64
             )[:, -bits_per_entry:]
         ).view(dtype=">q")[::-1]
+
+# WIP
+class ChunkSection(nbt.Compound):
+    """Collection of blocks in a chunk Y-section."""
+    __slots__ = (
+        "chunk",
+        "_blocks",
+    )
+
+    BS_SHAPE: SectionCoords = (u.SECTION_HEIGHT, *reversed(u.CHUNK_SIZE[:2]))  # (16, 16, 16)
+    NUM_BLOCKS: int = math.prod(BS_SHAPE)  # 4096
+
+    def __init__(self, *args, chunk: Chunk | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.chunk: Chunk = chunk
+        self._blocks: BlockDict = {}
+
+    @property
+    def Y(self) -> int:
+        return self["Y"].unpack()
+
+    @Y.setter
+    def Y(self, value: int) -> None:
+        self["Y"] = nbt.Int(value)
+
+    def get_blocks(self) -> BlockDict:
+        if not self._blocks:
+            if (length := len(blocks := self._decode_blocks())) not in {self.NUM_BLOCKS, 0}:
+                chunk_str = f"{self.chunk!r}, "
+                raise ChunkSectionError(
+                    "Section blocks mismatch in %sY=%s: %s blocks, expected %s",
+                    chunk_str,
+                    self.Y,
+                    length,
+                    self.NUM_BLOCKS
+                )
+            self._blocks = blocks
+        return self._blocks  # palette[int(indexes[coords.as_section_block])]
+
+    def _decode_blocks(self) -> BlockDict:
+        palette = self.get("Palette", [])
+        match len(palette):
+            case 0: return {}
+            case 1: return {
+                BlockPos.from_section(coords, self.Y): Block(palette[0])
+                for coords in numpy.ndindex(self.BS_SHAPE)
+            }
+        states = self._decode_blockstates(self["BlockStates"], len(palette))
+        return {
+            BlockPos.from_section(coords, self.Y): Block(palette[int(idx)])
+            # Alternative: ... in zip(numpy.ndindex(self.BS_SHAPE), states)
+            for coords, idx in numpy.ndenumerate(states.reshape(self.BS_SHAPE, copy=False))
+        }
+
+    # FIXME: Stub until #17 is merged and Chunk._decode_blockstates() is pasted here
+    def _decode_blockstates(self, data, palette_length: int | None = None) -> numpy.ndarray:
+        dummy_palette = None if palette_length is None else range(palette_length)
+        return self.chunk._decode_blockstates(data, palette=dummy_palette)
+
+
+# TODO: Maybe should be in util?
+class BlockPos(t.NamedTuple):
+    """(x, y, z) tuple of integer coordinates, absolute or offset (relative to chunk)."""
+    x: int
+    y: int
+    z: int
+
+    __repr__ = u.BasePos.__repr__
+
+    @classmethod
+    def from_section(cls: t.Self, coords: SectionCoords, Y: int | None = None) -> t.Self:
+        # A.K.A "from_yzx()"
+        return cls(
+            coords[2],
+            coords[0] + (0 if Y is None else Y) * u.SECTION_HEIGHT,
+            coords[1],
+        )
+
+    def to_world(self, chunk_world_pos: u.ChunkPos = (0, 0)) -> t.Self:
+        offset = tuple(math.prod(_) for _ in zip(u.CHUNK_SIZE, chunk_world_pos))
+        return self.__class__(self.x + offset[0], self.y, self.z + offset[1])
