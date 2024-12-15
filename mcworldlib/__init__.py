@@ -32,7 +32,7 @@ __project__     = "MCWorldLib: Minecraft World Library"  # unused in setup.cfg
 __description__ = "Yet another python library to manipulate Minecraft save data"  # __doc__
 __author__      = "Rodrigo Silva (MestreLion)"
 __email__       = "minecraft@rodrigosilva.com"
-__version__     = '0.2021.10'
+__version__     = "2024.12"
 
 # Renaming stuff for the API
 walk_nbt = walk  # from .nbt

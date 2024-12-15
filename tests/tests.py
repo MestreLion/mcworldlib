@@ -133,7 +133,7 @@ def blocks(w=None):
     for chunk in [w.player.get_chunk()]:  # w.get_chunks(False):
         print(chunk)
         print()
-        for Y, palette, indexes in chunk.get_blocks():
+        for Y, palette, indexes in chunk.get_sectioned_blocks():
             print(f"SECTION Y={Y}")
             for i, p in enumerate(palette):
                 bid = p['Name']

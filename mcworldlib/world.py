@@ -28,6 +28,7 @@ import typing as t
 import tqdm
 
 from . import anvil
+from . import chunk as c
 from . import level
 from . import nbt
 from . import util as u
@@ -111,7 +112,9 @@ class World:
     def chunk_count(self):  # FIXME!
         return sum(len(_) for _ in self.regions)
 
-    def get_chunks(self, progress=True, dimension=OVERWORLD, category='region'):
+    def get_chunks(
+        self, progress=True, dimension=OVERWORLD, category="region"
+    ) -> t.Iterator[anvil.RegionChunk]:
         """Yield all chunks in a given dimension and category, Overworld Regions by default"""
         regions = self.dimensions[dimension][category].values()
         if progress:
@@ -120,8 +123,9 @@ class World:
             for chunk in region.values():
                 yield chunk
 
-    def get_all_chunks(self, progress=True
-                       ) -> t.Iterator[t.Tuple[u.Dimension, str, anvil.RegionChunk]]:
+    def get_all_chunks(
+        self, progress=True
+    ) -> t.Iterator[t.Tuple[u.Dimension, str, anvil.RegionChunk]]:
         """Yield (dimension, category, chunk) for all chunks
 
          In all dimensions and categories
@@ -136,8 +140,9 @@ class World:
                                              category=category):
                     yield dimension, category, chunk
 
-    def get_chunk(self, chunk_coords: u.TPos2D,
-                  dimension=OVERWORLD, category='region') -> anvil.RegionChunk:
+    def get_chunk(
+        self, chunk_coords: u.TPos2D, dimension=OVERWORLD, category="region"
+    ) -> anvil.RegionChunk:
         """Return the chunk at coordinates (cx, cz)"""
         if not isinstance(chunk_coords, u.ChunkPos):
             chunk_coords = u.ChunkPos(*chunk_coords)
@@ -149,20 +154,27 @@ class World:
             raise anvil.ChunkError(f"Chunk does not exist: {chunk_coords}"
                                    f" [Region {region}, offset {chunk}]")
 
-    def get_chunk_at(self, coords: u.TPos3D,
-                     dimension=OVERWORLD, category='region') -> anvil.RegionChunk:
+    def get_chunk_at(
+        self, coords: u.TPos3D, dimension=OVERWORLD, category="region"
+    ) -> anvil.RegionChunk:
+        """Return the chunk containing the world coordinates (x, y, z)"""
         if not isinstance(coords, u.Pos):
             coords = u.Pos(*coords)
         return self.get_chunk(coords.chunk, dimension=dimension, category=category)
 
-    def get_block_at(self, coords: u.TPos3D, dimension=OVERWORLD):
+    def get_blocks(self, progress=True, dimension=OVERWORLD) -> t.Iterator[c.BlockTuple]:
+        """Yield (BlockPos, Block) for all blocks in a given dimension, Overworld by default."""
+        for chunk in self.get_chunks(progress=progress, dimension=dimension):
+            for pos, block in chunk.get_blocks():
+                yield (pos.to_world(chunk.world_pos), block)
+
+    def get_block_at(self, coords: u.TPos3D, dimension=OVERWORLD) -> c.Block:
         if not isinstance(coords, u.Pos):
             coords = u.Pos(*coords)
-        chunk = self.get_chunk_at(coords, dimension=dimension, category='region')
-        palette, indexes = chunk.get_section_blocks(Y=coords.section)
-        if not palette:
+        chunk = self.get_chunk_at(coords, dimension=dimension, category="region")
+        if (section := chunk.get_section(coords.section)) is None:
             return None
-        return palette[int(indexes[coords.as_section_block])]
+        return section.get_blocks()[coords.as_section_block]
 
     def get_player(self, name=None):
         """Get a named player (server) or the world default player"""

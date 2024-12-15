@@ -8,6 +8,8 @@ Exported items:
     Level -- Class representing the main file 'level.dat', inherits from nbt.File
 """
 
+from __future__ import annotations
+
 __all__ = ['Level']
 
 import logging
@@ -53,6 +55,7 @@ class Level(nbt.File):
         self.world = world
 
         try:
+            # FIXME: This will overwrite self.player property !!!
             self.player = player.Player(self.player, level=self)
         except KeyError:
             log.warning("Level has no Player, possibly malformed: %s", self.filename)

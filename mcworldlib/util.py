@@ -32,10 +32,17 @@ import os.path
 import platform
 import pprint
 import time
-import typing as t
 
 import numpy
+# A `typing` name binding to either stdlib's `typing` or the external `typing_extensions`
+# module is *required* by other modules, so they can (transparently) import it as
+# `from .util import typing as t`
+try:
+    import typing_extensions as typing
+except ImportError:
+    import typing
 
+t = typing
 
 # platform-dependent minecraft directory paths
 if platform.system() == 'Windows':
