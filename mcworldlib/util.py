@@ -45,6 +45,7 @@ else:
 CHUNK_GRID = (32, 32)  # (X, Z) chunks in each region file = 1024 chunks per region
 CHUNK_SIZE = (16, 16)  # (X, Z) blocks in each chunk
 SECTION_HEIGHT = 16    # chunk section height in blocks
+MINECRAFT_KEY_PREFIX = "minecraft"  # Prefix for built-in minecraft Ids and Names
 
 # General type aliases
 AnyPath = t.Union[str, os.PathLike]
@@ -316,6 +317,18 @@ class LazyLoadFileMap(LazyLoadMap[Pos2DT, LazyFileT]):
 
     def _load_item(self, key: Pos2DT, item: AnyPath) -> t.Optional[t.Tuple[Pos2DT, VT]]:
         raise NotImplementedError
+
+
+def full_key(key: str) -> str:
+    """Add 'minecraft:' prefix to key if contains no prefix."""
+    return key if ":" in key else ":".join((MINECRAFT_KEY_PREFIX, key))
+
+
+def short_key(key: str) -> str:
+    """Remove 'minecraft:' prefix from key if it starts with the prefix."""
+    if key.startswith(f"{MINECRAFT_KEY_PREFIX}:"):
+        return key[len(MINECRAFT_KEY_PREFIX) + 1 :]
+    return key
 
 
 def isodate(secs: int) -> str:
