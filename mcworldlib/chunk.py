@@ -89,7 +89,7 @@ class Chunk(nbt.Root):
 
     def get_section(self, Y:int) -> ChunkSection | None:
         """ChunkSection of the given Y-section, or None if not found."""
-        for section in self.get_sections:
+        for section in self.get_sections():
             if section.Y == Y:
                 return section
         return None
@@ -100,6 +100,8 @@ class Chunk(nbt.Root):
 
     def _decode_blockstates(self, data, palette=None):
         """Decode an NBT BlockStates LongArray to a block state indexes array"""
+
+        # LongArray in nbtlib is numpy.ndarray(..., dtype=">i8"), so itemsize = 8 bytes
         pack_bits = data.itemsize * 8  # 64 bits for each Long Array element
 
         def bits_per_index():
@@ -113,18 +115,20 @@ class Chunk(nbt.Root):
                 f"BlockState bits mismatch: {bit_length} != {bits_from_data()}"
             return bit_length
 
+        LONG_BITS = 64
         bits = bits_per_index()
+        padding_per_long = LONG_BITS % bits
         # Adapted from Amulet-Core's decode_long_array()
-        # https://github.com/Amulet-Team/Amulet-Core/blob/develop/amulet/utils/world_utils.py
+        # https://github.com/Amulet-Team/Amulet-Core/blob/1.0/amulet/utils/world_utils.py
         indexes = numpy.packbits(
             numpy.pad(
                 numpy.unpackbits(
-                        data[::-1].astype(f">i{pack_bits//8}").view(f"uint{pack_bits//8}")
-                    ).reshape(-1, bits),
+                    data[::-1].astype(f">i{pack_bits//8}").view(f"uint{pack_bits//8}").unpack()
+                ).reshape(-1, LONG_BITS)[:, padding_per_long:LONG_BITS].reshape(-1, bits),
                 [(0, 0), (pack_bits - bits, 0)],
                 "constant",
             )
-        ).view(dtype=">q")[::-1]
+        ).view(dtype=">q")[::-1][:self.BS_INDEXES]
         return indexes
 
     # noinspection PyMethodMayBeStatic
@@ -198,6 +202,7 @@ class ChunkSection(nbt.Compound):
 
     # FIXME: Stub until #17 is merged and Chunk._decode_blockstates() is pasted here
     def _decode_blockstates(self, data, palette_length: int | None = None) -> numpy.ndarray:
+        # https://www.reddit.com/r/AskProgramming/comments/145y28g/comment/jnq7wyg/
         dummy_palette = None if palette_length is None else range(palette_length)
         return self.chunk._decode_blockstates(data, palette=dummy_palette)
 
