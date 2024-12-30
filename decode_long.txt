@@ -1,0 +1,27 @@
+https://www.reddit.com/r/AskProgramming/comments/145y28g/comment/jnq7wyg/
+
+There seems to be some disagreement between https://wiki.vg/Chunk_Format and https://minecraft.fandom.com/wiki/Chunk_format. The former seems to indicate that data array entries can either point to section-local palette entries or to global palette entries (i.e. "indirect" vs. "direct"), while the latter doesn't mention anything about "direct" entries. I'm going to assume that the latter is more correct.
+
+Both documents agree that is Bits Per Entry is 0, then the palette contains exactly one entry and it is used for all blocks in the section. this would be the case if you had a section with only air or with solid stone.
+
+Otherwise, Bits Per Entry indicates the length (in bits) of one entry in the data array. This will be enough bits to reference any element in the palette array. So if the palette array has say 200 elements, then Bits Per Entry should be RoundUp(Log2(200)) == RoundUp(7.6439...) == 8.
+
+Now you need to understand whether you have a level from 1.15.2 and below, or a level from 1.16.0 and above.
+
+For 1.16.0+ levels, the data elements are packed into 64-bit numbers. If Bits Per Entry is a nice value (like 4), these will fit cleanly (i.e. each 64-bit number will contain 16 4-bit values). If Bits Per Entry is not nice (like 5), you can't pack them tightly. In this case, the bits are packed until there's not enough space in the 64-bit number, then the high bits are set to zero. For example, if Bits Per Entry is 5, then you can pack RoundDown(64 / 5) == RoundDown(12.8) == 12 5-bit entries per 64-bit value. See https://wiki.vg/Chunk_Format#Example_.28New.29
+
+If you have a level from 1.15.2 or below, then the data array is treated as a simple bitstream. Values are packed tightly and individual elements can span across 64-bit boundaries. See https://wiki.vg/Chunk_Format#Example_.28Old.29 for an example. In this case, it might be easier to read the data from data 32-bits at a time into a 64-bit buffer. After you've consumed at least 32 bits from the buffer, you can load another 32 bits into the buffer. Again, with the example of 5 bits per entry, you could load 64 bits into your buffer. Once you've consumed 7 elements from the bitstream (35 bits), you only have 29 bits left in the buffer. So you can load another 32 bits into the top of the buffer (starting at bit 29), and now the buffer has 61 bits in it.
+
+
+https://github.com/Amulet-Team/Amulet-Core/blob/2.0/src/amulet/level/java/long_array.hpp
+/*
+Minecraft Java edition stores the block and height arrays in a compacted long array format.
+The format stores one or more entries per long, using the fewest number of bits required to store the data.
+There are two storage methods, the compact version was used prior to 1.16 and the less compact version in 1.16 and above.
+Apparently the less compact version is quicker to pack and unpack.
+The compact version effectively stores the values as a bit array spanning one or more values in the long array.
+There may be some padding if the bit array does not fill all the long values. (The letter "P" signifies an unused padding bit)
+HGGGGGGGGGFFFFFFFFFEEEEEEEEEDDDDDDDDDCCCCCCCCCBBBBBBBBBAAAAAAAAA PPNNNNNNNNNMMMMMMMMMLLLLLLLLLKKKKKKKKKJJJJJJJJJIIIIIIIIIHHHHHHHH
+The less compact version does not allow entries to straddle long values. Instead, if required, there is padding within each long.
+PGGGGGGGGGFFFFFFFFFEEEEEEEEEDDDDDDDDDCCCCCCCCCBBBBBBBBBAAAAAAAAA PNNNNNNNNNMMMMMMMMMLLLLLLLLLKKKKKKKKKJJJJJJJJJIIIIIIIIIHHHHHHHHH
+*/
