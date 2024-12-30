@@ -277,7 +277,12 @@ def deep_walk(
         )
 
 
-def nbt_explorer(root: AnyTag, root_name: str = None, width: int = 2) -> None:
+def nbt_explorer(
+        root: AnyTag,
+        root_name: str = None,
+        width: int = 2,
+        do_print: bool = True,
+    ) -> str | None:
     """Walk NBT just like NBT Explorer!
 
     - Compounds first, then Lists (of all types), then leaf values. Arrays last
@@ -299,15 +304,17 @@ def nbt_explorer(root: AnyTag, root_name: str = None, width: int = 2) -> None:
         iter_container=_tree.iter_nbt(sort_key),
         is_container=_tree.is_nbt_container,
     )
-    _tree.print_tree(
+    ret = _tree.print_tree(
         (),
         iterator=iterator,
         noun_plural="entries", noun_singular="entry",
         fmt_container="{length} {noun}",
         show_root_as=root_name,
         width=width,
-        indent_first_gen=False,
+        indent_first_gen=bool(root_name),
+        do_print=do_print,
     )
+    return ret
 
 
 def check_tags(root: object, root_cls: t.Optional[AnyTag] = Compound) -> bool:

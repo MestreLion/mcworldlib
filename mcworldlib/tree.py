@@ -133,11 +133,14 @@ def print_tree(root: Container, *, width: int = 2, line_offset: int = 0,
     # Useful symbols: │┊⦙ ├ └╰ ┐╮ ─┈ ┬⊟⊞ ⊕⊖⊙⊗⊘
     margin = ""
     previous = 0
+    lines = []
     if show_root_as is not None:
-        print(show_root_as)
+        if do_print:
+            print(show_root_as)
+        else:
+            lines.append(show_root_as)
     if iterator is None:
         iterator = walk(root)
-    lines = []
     for item in iterator:
         level = len(item.keys)
         if not indent_first_gen:
