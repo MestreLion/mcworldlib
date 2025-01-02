@@ -8,6 +8,7 @@ Exported items:
     Pos   -- Class representing a (x, y, z) 3D position coordinate, inherits from NamedTuple
     PosXZ -- Class representing a (x, z)    2D position coordinate, inherits from NamedTuple
 """
+from __future__ import annotations
 
 __all__ = [
     'MINECRAFT_SAVES_DIR',
@@ -66,6 +67,12 @@ LazyFileT = t.Union[AnyPath, VT]
 
 # To avoid importing nbt
 CompoundT = t.Dict[str, VT]
+
+# Other general-use, minecraft-related type aliases
+Key: 't.TypeAlias' = t.Union[int, str]  # Numerical or Namespaced (string) ID
+if t.TYPE_CHECKING:
+    from . import nbt
+    NbtDimension: t.TypeAlias = t.Union[nbt.Int, nbt.String]
 
 
 class MCError(Exception):
@@ -319,14 +326,16 @@ class LazyLoadFileMap(LazyLoadMap[Pos2DT, LazyFileT]):
         raise NotImplementedError
 
 
-def full_key(key: str) -> str:
-    """Add 'minecraft:' prefix to key if contains no prefix."""
-    return key if ":" in key else ":".join((MINECRAFT_KEY_PREFIX, key))
+def full_key(key: Key) -> Key:
+    """Add 'minecraft:' prefix to key if it is a string and contains no prefix."""
+    if isinstance(key, str) and ":" not in key:
+        return ":".join((MINECRAFT_KEY_PREFIX, key))
+    return key
 
 
-def short_key(key: str) -> str:
-    """Remove 'minecraft:' prefix from key if it starts with the prefix."""
-    if key.startswith(f"{MINECRAFT_KEY_PREFIX}:"):
+def short_key(key: Key) -> Key:
+    """Remove 'minecraft:' prefix from key if it's a string that starts with the prefix."""
+    if isinstance(key, str) and key.startswith(f"{MINECRAFT_KEY_PREFIX}:"):
         return key[len(MINECRAFT_KEY_PREFIX) + 1 :]
     return key
 
