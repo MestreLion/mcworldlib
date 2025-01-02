@@ -92,7 +92,8 @@ class InvalidPath(MCError, ValueError):
 
 
 class Dimension(enum.Enum):
-    # Changed from IDs to namespace in Minecraft 1.16 (2230 < DataVersion < 2586)
+    # Changed from IDs to namespace in DataVersion 2554, snapshot 20w21a for Minecraft 1.16
+    # https://minecraft.wiki/w/Java_Edition_20w21a (Changes -> General -> NBT Format)
     OVERWORLD  =  0
     THE_NETHER = -1
     THE_END    =  1
@@ -104,11 +105,20 @@ class Dimension(enum.Enum):
     def subfolder(self):
         return '' if self.name == 'OVERWORLD' else f'DIM{self.value}'
 
+    def key(self):
+        return full_key(self.name.lower())
+
+    def to_nbt(self, data_version: t.Optional[int] = 2554) -> NbtDimension:
+        from . import nbt
+        if data_version is None or data_version < 2554:
+            return nbt.Int(self.value)
+        return nbt.String(self.key)
+
     @classmethod
-    def from_nbt(cls, dimension) -> 'Dimension':
+    def from_nbt(cls, dimension: NbtDimension) -> t.Self:
         if isinstance(dimension, int):
             return cls(dimension)
-        return cls[dimension.split(':')[-1].upper()]  # Ewww!
+        return cls[short_key(dimension).upper()]
 
 
 class BasePos(TPos):
@@ -338,6 +348,10 @@ def short_key(key: Key) -> Key:
     if isinstance(key, str) and key.startswith(f"{MINECRAFT_KEY_PREFIX}:"):
         return key[len(MINECRAFT_KEY_PREFIX) + 1 :]
     return key
+
+
+def friendly_name(name: str) -> str:
+    return name.replace("_", " ").title()
 
 
 def isodate(secs: int) -> str:
