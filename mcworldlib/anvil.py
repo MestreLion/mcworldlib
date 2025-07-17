@@ -52,11 +52,20 @@ COMPRESSION_GZIP = 1  # GZip (RFC1952) (unused in practice)
 COMPRESSION_ZLIB = 2  # Zlib (RFC1950)
 COMPRESSION_NONE = 3  # Uncompressed. Mentioned in the wiki, unused in practice
 COMPRESSION_LZ4 = 4
+# LZ4 compression using the block format:
+# https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md
+#
+# Follows the lz4-java stream format, which adds a custom header:
+# https://github.com/lz4/lz4-java/blob/master/src/java/net/jpountz/lz4/LZ4BlockOutputStream.java
+# https://github.com/lz4/lz4-java/blob/master/src/java/net/jpountz/lz4/LZ4BlockInputStream.java
+#
+# See also a simplified summary here:
+# https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Map_Format#LZ4_Compression
 COMPRESSION_TYPES = (
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
     COMPRESSION_NONE,
-    COMPRESSION_LZ4
+    COMPRESSION_LZ4,
 )
 
 log = logging.getLogger(__name__)
