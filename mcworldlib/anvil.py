@@ -30,6 +30,8 @@ import typing as t
 import zlib
 
 import numpy
+import lz4.block
+import xxhash
 
 from . import chunk as c
 from . import util as u
@@ -49,10 +51,12 @@ SECTOR_BYTES = 4096  # Could possibly be derived from CHUNK_GRID and CHUNK_*_BYT
 COMPRESSION_GZIP = 1  # GZip (RFC1952) (unused in practice)
 COMPRESSION_ZLIB = 2  # Zlib (RFC1950)
 COMPRESSION_NONE = 3  # Uncompressed. Mentioned in the wiki, unused in practice
+COMPRESSION_LZ4 = 4
 COMPRESSION_TYPES = (
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
     COMPRESSION_NONE,
+    COMPRESSION_LZ4
 )
 
 log = logging.getLogger(__name__)
@@ -394,6 +398,54 @@ class Regions(u.LazyLoadFileMap[u.RegionPos, RegionFile]):
         self._items[pos] = candidates[0]
 
 
+def compress_lz4_java(data: bytes, compression_level: int = 6) -> bytes:
+    """
+    Compress data with LZ4 and lz4-java header
+    (Compression level 6 is default for vanilla minecraft)
+    """
+    token = 0x20 | compression_level
+    # Don't remove store_size otherwise it will add an <I32 with the file size at the start
+    compressed = lz4.block.compress(data, compression=compression_level, store_size=False)
+    compressed_len = len(compressed)
+    decompressed_len = len(data)
+    checksum = xxhash.xxh32(data, seed=0x9747b28c).intdigest() & 0x0FFFFFFF
+
+    header = (
+        b"LZ4Block" +
+        struct.pack("B", token) +
+        struct.pack("<i", compressed_len) +
+        struct.pack("<i", decompressed_len) +
+        struct.pack("<i", checksum)
+    )
+
+    return header + compressed
+
+def decompress_lz4_java(data: bytes) -> bytes:
+    """
+    Decompress data with LZ4 and lz4-java header
+    """
+    if not data.startswith(b"LZ4Block"):
+        raise ValueError("Missing LZ4Block magic header.")
+
+    compressed_len = struct.unpack("<i", data[9:13])[0]
+    decompressed_len = struct.unpack("<i", data[13:17])[0]
+    checksum_expected = struct.unpack("<i", data[17:21])[0]
+
+    compressed_data = data[21:21+compressed_len]
+
+    if len(compressed_data) != compressed_len:
+        raise ValueError("Truncated compressed data.")
+
+    decompressed_data = lz4.block.decompress(compressed_data, uncompressed_size=decompressed_len)
+
+    checksum_actual = xxhash.xxh32(decompressed_data, seed=0x9747b28c).intdigest() & 0x0FFFFFFF
+
+    if checksum_actual != checksum_expected:
+        raise ValueError(f"Checksum mismatch: expected {checksum_expected:#x}, got {checksum_actual:#x}")
+
+    return decompressed_data
+
+
 class RegionChunk(c.Chunk):
     """Chunk in a Region.
 
@@ -431,11 +483,13 @@ class RegionChunk(c.Chunk):
         COMPRESSION_GZIP: gzip.compress,
         COMPRESSION_ZLIB: zlib.compress,
         COMPRESSION_NONE: lambda _: _,
+        COMPRESSION_LZ4: compress_lz4_java,
     }
     decompress = {
         COMPRESSION_GZIP: gzip.decompress,
         COMPRESSION_ZLIB: zlib.decompress,
         COMPRESSION_NONE: lambda _: _,
+        COMPRESSION_LZ4: decompress_lz4_java,
     }
 
     # noinspection PyTypeChecker
