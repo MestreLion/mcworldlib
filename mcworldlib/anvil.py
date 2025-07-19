@@ -33,6 +33,7 @@ import numpy
 
 from . import chunk as c
 from . import util as u
+from . import lz4_java as lz4j
 
 
 # Constants
@@ -49,10 +50,12 @@ SECTOR_BYTES = 4096  # Could possibly be derived from CHUNK_GRID and CHUNK_*_BYT
 COMPRESSION_GZIP = 1  # GZip (RFC1952) (unused in practice)
 COMPRESSION_ZLIB = 2  # Zlib (RFC1950)
 COMPRESSION_NONE = 3  # Uncompressed. Mentioned in the wiki, unused in practice
+COMPRESSION_LZ4J = 4  # LZ4-Java, non-standard LZ4 Block with a custom header
 COMPRESSION_TYPES = (
     COMPRESSION_GZIP,
     COMPRESSION_ZLIB,
     COMPRESSION_NONE,
+    COMPRESSION_LZ4J,
 )
 
 log = logging.getLogger(__name__)
@@ -431,11 +434,13 @@ class RegionChunk(c.Chunk):
         COMPRESSION_GZIP: gzip.compress,
         COMPRESSION_ZLIB: zlib.compress,
         COMPRESSION_NONE: lambda _: _,
+        COMPRESSION_LZ4J: lz4j.compress,
     }
     decompress = {
         COMPRESSION_GZIP: gzip.decompress,
         COMPRESSION_ZLIB: zlib.decompress,
         COMPRESSION_NONE: lambda _: _,
+        COMPRESSION_LZ4J: lz4j.decompress,
     }
 
     # noinspection PyTypeChecker
