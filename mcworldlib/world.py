@@ -111,7 +111,7 @@ class World:
     def chunk_count(self):  # FIXME!
         return sum(len(_) for _ in self.regions)
 
-    def get_chunks(self, progress=True, dimension=OVERWORLD, category='region'):
+    def get_chunks(self, progress=True, dimension: "Dimension"=OVERWORLD, category='region', auto_uncache=False):
         """Yield all chunks in a given dimension and category, Overworld Regions by default"""
         regions = self.dimensions[dimension][category].values()
         if progress:
@@ -119,8 +119,10 @@ class World:
         for region in regions:
             for chunk in region.values():
                 yield chunk
+            if auto_uncache:
+                region.uncache()
 
-    def get_all_chunks(self, progress=True
+    def get_all_chunks(self, progress=True, auto_uncache=False
                        ) -> t.Iterator[t.Tuple[u.Dimension, str, anvil.RegionChunk]]:
         """Yield (dimension, category, chunk) for all chunks
 
@@ -133,7 +135,8 @@ class World:
             for category in self.categories:
                 for chunk in self.get_chunks(progress=progress,
                                              dimension=dimension,
-                                             category=category):
+                                             category=category,
+                                             auto_uncache=auto_uncache):
                     yield dimension, category, chunk
 
     def get_chunk(self, chunk_coords: u.TPos2D,
